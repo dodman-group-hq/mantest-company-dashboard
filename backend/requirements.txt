@@ -1,0 +1,20 @@
+# Master Dashboard Template - Backend Requirements
+
+# FastAPI Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# HTTP Client for API proxy
+httpx>=0.25.0
+
+# Python ASGI server
+python-multipart>=0.0.6
+
+# For JWT token handling (if needed locally)
+pyjwt>=2.8.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Optional: For production deployment
+gunicorn>=21.2.0

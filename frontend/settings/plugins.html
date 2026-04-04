@@ -1,0 +1,441 @@
+<!-- 
+    Plugin Manager (Founder Only)
+    This HTML is returned by: GET /api/settings/plugins
+    Allows founders to enable/disable plugins and configure them
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-[var(--text-main)]">Plugin Manager</h1>
+                <p class="text-[var(--text-secondary)] mt-2">
+                    Manage and configure your AI plugins
+                </p>
+            </div>
+            <span class="px-3 py-1 text-sm bg-[var(--warning-light)] text-[var(--warning)] rounded-full font-medium">
+                Founder Only
+            </span>
+        </div>
+    </div>
+    
+    <!-- Plugin Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        
+        <!-- AI Lead Sniper Plugin -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-[var(--accent-light)] flex items-center justify-center text-2xl mr-4">
+                            🎯
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-[var(--text-main)]">AI Lead Sniper</h3>
+                            <p class="text-sm text-[var(--text-muted)]">v1.0.0</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               id="plugin-sniper" 
+                               class="sr-only peer" 
+                               checked
+                               onchange="PluginManager.togglePlugin('sniper', this.checked)">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--accent-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                    </label>
+                </div>
+                
+                <p class="text-sm text-[var(--text-secondary)] mb-4">
+                    Real-time lead capture from social signals across Twitter, LinkedIn, Reddit, HN, and GitHub.
+                </p>
+                
+                <div class="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-[var(--success)]">Active</span>
+                    </div>
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <span>0 API calls today</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="PluginManager.configurePlugin('sniper')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        Configure
+                    </button>
+                    <button onclick="PluginManager.viewLogs('sniper')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        View Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Competitor Shadow Plugin -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-[var(--accent-light)] flex items-center justify-center text-2xl mr-4">
+                            👁️
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-[var(--text-main)]">Competitor Shadow</h3>
+                            <p class="text-sm text-[var(--text-muted)]">v1.0.0</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               id="plugin-shadow" 
+                               class="sr-only peer" 
+                               checked
+                               onchange="PluginManager.togglePlugin('shadow', this.checked)">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--accent-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                    </label>
+                </div>
+                
+                <p class="text-sm text-[var(--text-secondary)] mb-4">
+                    Competitive intelligence and vulnerability detection to find market opportunities.
+                </p>
+                
+                <div class="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-[var(--success)]">Active</span>
+                    </div>
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <span>0 API calls today</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="PluginManager.configurePlugin('shadow')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        Configure
+                    </button>
+                    <button onclick="PluginManager.viewLogs('shadow')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        View Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ghost Writer Plugin -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-[var(--accent-light)] flex items-center justify-center text-2xl mr-4">
+                            ✍️
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-[var(--text-main)]">Ghost Writer</h3>
+                            <p class="text-sm text-[var(--text-muted)]">v1.0.0</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               id="plugin-ghost" 
+                               class="sr-only peer" 
+                               checked
+                               onchange="PluginManager.togglePlugin('ghost', this.checked)">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--accent-light)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                    </label>
+                </div>
+                
+                <p class="text-sm text-[var(--text-secondary)] mb-4">
+                    AI-powered content generation for outreach campaigns across multiple channels.
+                </p>
+                
+                <div class="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-[var(--success)]">Active</span>
+                    </div>
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        <span>0 API calls today</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="PluginManager.configurePlugin('ghost')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        Configure
+                    </button>
+                    <button onclick="PluginManager.viewLogs('ghost')" 
+                            class="flex-1 px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                        View Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add More Plugins Card -->
+        <div class="bg-white rounded-lg shadow-sm border-2 border-dashed border-[var(--border-color)] overflow-hidden flex items-center justify-center p-6">
+            <div class="text-center">
+                <div class="w-16 h-16 rounded-full bg-[var(--bg-side)] flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                </div>
+                <h3 class="font-semibold text-[var(--text-main)] mb-2">Add More Plugins</h3>
+                <p class="text-sm text-[var(--text-muted)] mb-4">Browse the plugin marketplace</p>
+                <button class="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm">
+                    Browse Marketplace
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Usage Stats -->
+    <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+        <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Usage Statistics</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-[var(--accent)] mb-2">0</div>
+                <div class="text-sm text-[var(--text-muted)]">API Calls Today</div>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-3xl font-bold text-[var(--success)] mb-2">3</div>
+                <div class="text-sm text-[var(--text-muted)]">Active Plugins</div>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-3xl font-bold text-[var(--warning)] mb-2">$0.00</div>
+                <div class="text-sm text-[var(--text-muted)]">Cost This Month</div>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-3xl font-bold text-[var(--info)] mb-2">100%</div>
+                <div class="text-sm text-[var(--text-muted)]">System Health</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function() {
+    const PluginManager = {
+
+        plugins: ['sniper', 'shadow', 'ghost'],
+        
+        async init() {
+            // Load real plugin statuses
+            await this.loadPluginStatuses();
+        },
+        
+        async loadPluginStatuses() {
+            const tenantId = window.Sovereign.getTenantId();
+            
+            for (const plugin of this.plugins) {
+                try {
+                    const status = await window.Sovereign.apiRequest(
+                        `/api/tenants/${tenantId}/plugins/${plugin}/status`,
+                        'GET'
+                    );
+                    
+                    // Update UI with real status
+                    this.updatePluginCard(plugin, status);
+                } catch (error) {
+                    console.error(`Failed to load ${plugin} status:`, error);
+                }
+            }
+        },
+
+        updatePluginCard(pluginName, status) {
+            // Update the plugin card with real data
+            const card = document.querySelector(`#plugin-${pluginName}`);
+            if (!card) return;
+            
+            // Update status text
+            const statusEl = card.querySelector('.plugin-status');
+            if (statusEl) {
+                statusEl.textContent = status.status === 'active' ? 'Active' : 'Paused';
+            }
+            
+            // Update API calls count
+            const apiCallsEl = card.querySelector('.api-calls');
+            if (apiCallsEl && status.stats) {
+                const calls = status.stats.api_calls || 0;
+                apiCallsEl.textContent = `${calls} API calls today`;
+            }
+            
+            // Update toggle switch
+            const toggle = card.querySelector('input[type="checkbox"]');
+            if (toggle) {
+                toggle.checked = status.status === 'active';
+            }
+        },
+        
+        async togglePlugin(pluginName, enabled) {
+            const tenantId = window.Sovereign.getTenantId();
+            const action = enabled ? 'resume' : 'pause';
+            
+            try {
+                await window.Sovereign.apiRequest(
+                    `/api/tenants/${tenantId}/plugins/${pluginName}/${action}`,
+                    'POST'
+                );
+                
+                window.Sovereign.showNotification(
+                    `${pluginName} ${enabled ? 'enabled' : 'paused'}`,
+                    'success'
+                );
+                
+                await this.loadPluginStatuses();
+            } catch (error) {
+                window.Sovereign.showNotification(
+                    `Failed to toggle ${pluginName}`,
+                    'error'
+                );
+                
+                // Revert toggle
+                const toggle = document.querySelector(`#plugin-${pluginName}`);
+                if (toggle) toggle.checked = !enabled;
+            }
+        },
+        
+        configurePlugin(pluginId) {
+            const configs = {
+                sniper: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Scan Frequency</label>
+                            <select class="w-full px-3 py-2 border rounded">
+                                <option>Every 5 minutes</option>
+                                <option>Every 15 minutes</option>
+                                <option>Every hour</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Alert Threshold</label>
+                            <input type="number" value="80" min="0" max="100" class="w-full px-3 py-2 border rounded">
+                        </div>
+                    </div>
+                `,
+                shadow: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Monitoring Interval</label>
+                            <select class="w-full px-3 py-2 border rounded">
+                                <option>Real-time</option>
+                                <option>Every hour</option>
+                                <option>Daily</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Vulnerability Alerts</label>
+                            <select class="w-full px-3 py-2 border rounded">
+                                <option>All severities</option>
+                                <option>High only</option>
+                                <option>High & Medium</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                ghost: `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Default Tone</label>
+                            <select class="w-full px-3 py-2 border rounded">
+                                <option>Consultative</option>
+                                <option>Aggressive</option>
+                                <option>Casual</option>
+                                <option>Formal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Auto-generate Drafts</label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="mr-2">
+                                <span class="text-sm">Enable automatic draft generation</span>
+                            </label>
+                        </div>
+                    </div>
+                `
+            };
+            
+            window.Sovereign.showModal(
+                `Configure ${pluginId.charAt(0).toUpperCase() + pluginId.slice(1)}`,
+                configs[pluginId] || '<p>Configuration options coming soon.</p>'
+            );
+        },
+        
+        async viewLogs(pluginName) {
+            const tenantId = window.Sovereign.getTenantId();
+            
+            try {
+                // Get plugin metrics
+                const metrics = await window.Sovereign.apiRequest(
+                    `/api/tenants/${tenantId}/plugins/${pluginName}/execute`,
+                    'POST',
+                    {
+                        action: 'get_metrics',
+                        params: {
+                            start_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                            end_date: new Date().toISOString()
+                        }
+                    }
+                );
+                
+                // Show logs in modal
+                const logsHTML = `
+                    <div class="text-sm space-y-2">
+                        <p><strong>Plugin:</strong> ${metrics.result.plugin}</p>
+                        <p><strong>Period:</strong> Last 7 days</p>
+                        <pre class="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-64">
+    ${JSON.stringify(metrics.result, null, 2)}
+                        </pre>
+                    </div>
+                `;
+                
+                window.Sovereign.showModal(`${pluginName} Logs`, logsHTML);
+            } catch (error) {
+                window.Sovereign.showNotification('Failed to load logs', 'error');
+            }
+        }
+    };
+    
+    // Initialize
+    PluginManager.init();
+    
+    // Export to global
+    window.PluginManager = PluginManager;
+})();
+</script>
+
+<style>
+/* Toggle Switch Styles */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+</style>

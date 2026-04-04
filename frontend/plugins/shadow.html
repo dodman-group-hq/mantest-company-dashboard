@@ -1,0 +1,592 @@
+<!-- 
+    Competitor Shadow Plugin Dashboard
+    This HTML is returned by: GET /api/plugins/shadow/dashboard
+    Rendered into: #main-content via HTMX
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-[var(--text-main)]">👁️ Competitor Shadow</h1>
+            <p class="text-[var(--text-secondary)] mt-1">Market intelligence & vulnerability detection</p>
+        </div>
+        <button onclick="ShadowPlugin.showAddModal()" 
+                class="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+            + Add Competitor
+        </button>
+    </div>
+    
+    <!-- Main Content: Watchlist + Intelligence Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- Left: Watchlist Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
+                <div class="p-4 border-b border-[var(--border-color)]">
+                    <h3 class="font-semibold text-[var(--text-main)]">Watchlist</h3>
+                    <p id="watch-count" class="text-sm text-[var(--text-muted)] mt-1">0 tracked</p>
+                </div>
+                
+                <div id="watchlist" class="p-4 space-y-2 max-h-[700px] overflow-y-auto">
+                    <div class="text-center text-[var(--text-muted)] py-12">
+                        <p class="text-sm">No competitors tracked</p>
+                        <p class="text-xs mt-2">Click "Add Competitor" to start</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Intelligence Grid -->
+        <div class="lg:col-span-3">
+            <div class="mb-4 flex justify-between items-center">
+                <h3 class="font-semibold text-[var(--text-main)]">Intelligence Grid</h3>
+                <select id="filter-status" 
+                        onchange="ShadowPlugin.filterGrid(this.value)"
+                        class="px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                    <option value="all">All Status</option>
+                    <option value="vulnerable">Vulnerable</option>
+                    <option value="stable">Stable</option>
+                    <option value="growing">Growing</option>
+                </select>
+            </div>
+            
+            <div id="intelligence-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="col-span-full text-center text-[var(--text-muted)] py-24">
+                    <svg class="w-16 h-16 mx-auto mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <p>Add competitors to see intelligence cards</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Competitor Modal -->
+<div id="add-competitor-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[var(--z-modal)] flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between p-6 border-b border-[var(--border-color)]">
+            <h2 class="text-xl font-semibold text-[var(--text-main)]">Add Competitor</h2>
+            <button onclick="ShadowPlugin.hideAddModal()" 
+                    class="text-[var(--text-secondary)] hover:text-[var(--text-main)]">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Company Name
+                </label>
+                <input type="text" 
+                       id="competitor-name"
+                       placeholder="e.g., Competitor Inc"
+                       class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Website URL
+                </label>
+                <input type="url" 
+                       id="competitor-url"
+                       placeholder="https://competitor.com"
+                       class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Category
+                </label>
+                <select id="competitor-category"
+                        class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                    <option value="direct">Direct Competitor</option>
+                    <option value="indirect">Indirect Competitor</option>
+                    <option value="adjacent">Adjacent Market</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 p-6 border-t border-[var(--border-color)]">
+            <button onclick="ShadowPlugin.hideAddModal()" 
+                    class="px-4 py-2 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                Cancel
+            </button>
+            <button onclick="ShadowPlugin.addCompetitor()" 
+                    class="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                Add to Watchlist
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Vulnerability Alerts Container -->
+<div id="alerts-container" class="fixed bottom-6 right-6 z-[var(--z-tooltip)] space-y-3 max-w-md"></div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function() {
+    const ShadowPlugin = {
+        competitors: [],
+        
+        async init() {
+            // Load competitors and vulnerabilities on page load
+            await this.loadCompetitors();
+        },
+        
+        showAddModal() {
+            document.getElementById('add-competitor-modal').classList.remove('hidden');
+            document.getElementById('competitor-name').value = '';
+            document.getElementById('competitor-url').value = '';
+        },
+        
+        hideAddModal() {
+            document.getElementById('add-competitor-modal').classList.add('hidden');
+        },
+        
+        async addCompetitor() {
+            const name = document.getElementById('competitor-name').value;
+            const url = document.getElementById('competitor-url').value;
+            const category = document.getElementById('competitor-category').value;
+            
+            if (!name || !url) {
+                window.Sovereign.showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            try {
+                // Call real API
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/shadow/competitors`,
+                    'POST',
+                    {
+                        name: name,
+                        domain: url.replace(/^https?:\/\//, ''), // Extract domain
+                        category: category,
+                        notes: ''
+                    }
+                );
+                
+                if (result.success) {
+                    window.Sovereign.showNotification('Competitor added successfully', 'success');
+                    this.hideAddModal();
+                    
+                    // Reload competitors
+                    await this.loadCompetitors();
+                }
+            } catch (error) {
+                console.error('Error adding competitor:', error);
+                window.Sovereign.showNotification('Failed to add competitor', 'error');
+            }
+        },
+
+        async loadCompetitors() {
+            try {
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/shadow/competitors`,
+                    'GET'
+                );
+                
+                if (result.success) {
+                    this.competitors = result.competitors.map(comp => ({
+                        id: comp.id,
+                        name: comp.name,
+                        url: `https://${comp.domain}`,
+                        category: comp.category,
+                        addedAt: new Date(comp.added_at || Date.now()),
+                        metrics: {
+                            // These will be populated from scan results
+                            serviceStability: 85,
+                            customerSentiment: 80,
+                            marketPresence: 75
+                        },
+                        vulnerabilities: [] // Will be populated from vulnerabilities endpoint
+                    }));
+                    
+                    this.refreshUI();
+                    
+                    // Load vulnerabilities for each competitor
+                    await this.loadVulnerabilities();
+                }
+            } catch (error) {
+                console.error('Error loading competitors:', error);
+            }
+        },
+
+        async loadVulnerabilities() {
+            try {
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/shadow/vulnerabilities?min_score=70`,
+                    'GET'
+                );
+                
+                if (result.success) {
+                    // Map vulnerabilities to competitors
+                    result.vulnerabilities.forEach(vuln => {
+                        const comp = this.competitors.find(c => c.name === vuln.competitor);
+                        if (comp) {
+                            if (!comp.vulnerabilities) comp.vulnerabilities = [];
+                            
+                            comp.vulnerabilities.push({
+                                type: vuln.type,
+                                severity: vuln.severity,
+                                label: vuln.title || vuln.type.replace('_', ' '),
+                                score: vuln.score,
+                                found: true,
+                                description: vuln.description,
+                                exploit_angle: vuln.exploit_angle
+                            });
+                        }
+                    });
+                    
+                    this.refreshUI();
+                    
+                    // Show alerts for high-severity vulnerabilities
+                    this.competitors.forEach(comp => this.checkVulnerabilities(comp));
+                }
+            } catch (error) {
+                console.error('Error loading vulnerabilities:', error);
+            }
+        },
+
+        async scanCompetitors() {
+            try {
+                window.Sovereign.showNotification('Scanning competitors...', 'info');
+                
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/shadow/scan`,
+                    'POST',
+                    {
+                        manual_trigger: true
+                    }
+                );
+                
+                if (result.success) {
+                    window.Sovereign.showNotification(
+                        `Scan complete! Found ${result.total_vulnerabilities} vulnerabilities`,
+                        'success'
+                    );
+                    
+                    // Reload vulnerabilities
+                    await this.loadVulnerabilities();
+                }
+            } catch (error) {
+                console.error('Scan error:', error);
+                window.Sovereign.showNotification('Scan failed', 'error');
+            }
+        },
+        
+        removeCompetitor(compId) {
+            const comp = this.competitors.find(c => c.id === compId);
+            if (!comp) return;
+            
+            if (confirm(`Remove ${comp.name} from watchlist?`)) {
+                this.competitors = this.competitors.filter(c => c.id !== compId);
+                window.Sovereign.saveToLocalStorage('shadow_competitors', this.competitors);
+                this.refreshUI();
+                window.Sovereign.showNotification('Competitor removed', 'info');
+            }
+        },
+        
+        refreshUI() {
+            this.renderWatchlist();
+            this.renderIntelligenceGrid();
+        },
+        
+        renderWatchlist() {
+            const watchlist = document.getElementById('watchlist');
+            const count = document.getElementById('watch-count');
+            
+            count.textContent = `${this.competitors.length} tracked`;
+            
+            if (this.competitors.length === 0) {
+                watchlist.innerHTML = `
+                    <div class="text-center text-[var(--text-muted)] py-12">
+                        <p class="text-sm">No competitors tracked</p>
+                        <p class="text-xs mt-2">Click "Add Competitor" to start</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            watchlist.innerHTML = this.competitors.map(comp => {
+                const vulnCount = comp.vulnerabilities.filter(v => v.found).length;
+                return `
+                    <div class="p-3 bg-[var(--bg-side)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors group"
+                         onclick="ShadowPlugin.highlightCard('${comp.id}')">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="font-medium text-sm text-[var(--text-main)]">${comp.name}</span>
+                            <button onclick="event.stopPropagation(); ShadowPlugin.removeCompetitor('${comp.id}')" 
+                                    class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--error)] transition-opacity">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 text-xs rounded bg-[var(--accent-light)] text-[var(--accent)]">
+                                ${comp.category}
+                            </span>
+                            ${vulnCount > 0 ? `
+                                <span class="text-xs text-[var(--warning)]">
+                                    ${vulnCount} vuln${vulnCount > 1 ? 's' : ''}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        },
+        
+        renderIntelligenceGrid() {
+            const grid = document.getElementById('intelligence-grid');
+            
+            if (this.competitors.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center text-[var(--text-muted)] py-24">
+                        <svg class="w-16 h-16 mx-auto mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <p>Add competitors to see intelligence cards</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = this.competitors.map(comp => this.createIntelligenceCard(comp)).join('');
+        },
+        
+        createIntelligenceCard(comp) {
+            const metrics = comp.metrics;
+            const vulns = comp.vulnerabilities.filter(v => v.found);
+            const healthStatus = this.calculateHealthStatus(metrics);
+            
+            const statusColors = {
+                vulnerable: { bg: 'error-light', text: 'error', border: 'error' },
+                stable: { bg: 'success-light', text: 'success', border: 'success' },
+                growing: { bg: 'warning-light', text: 'warning', border: 'warning' }
+            };
+            
+            const colors = statusColors[healthStatus];
+            
+            return `
+                <div id="card-${comp.id}" 
+                     class="intelligence-card bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden hover:shadow-md transition-shadow"
+                     data-status="${healthStatus}">
+                    <!-- Header -->
+                    <div class="p-4 border-b border-[var(--border-color)] flex items-start justify-between">
+                        <div>
+                            <h4 class="font-semibold text-[var(--text-main)]">${comp.name}</h4>
+                            <a href="${comp.url}" target="_blank" 
+                               class="text-xs text-[var(--accent)] hover:underline flex items-center gap-1 mt-1">
+                                ${comp.url}
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded bg-[var(--${colors.bg})] text-[var(--${colors.text})]">
+                            ${healthStatus}
+                        </span>
+                    </div>
+                    
+                    <!-- Metrics -->
+                    <div class="p-4 space-y-3">
+                        ${this.createMetricBar('Service Stability', metrics.serviceStability)}
+                        ${this.createMetricBar('Customer Sentiment', metrics.customerSentiment)}
+                        ${this.createMetricBar('Market Presence', metrics.marketPresence)}
+                    </div>
+                    
+                    <!-- Vulnerabilities -->
+                    ${vulns.length > 0 ? `
+                        <div class="p-4 border-t border-[var(--border-color)]">
+                            <h5 class="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                                Detected Vulnerabilities
+                            </h5>
+                            <div class="flex flex-wrap gap-2">
+                                ${vulns.map(v => `
+                                    <span class="px-2 py-1 text-xs rounded ${this.getVulnColor(v.severity)}">
+                                        ${v.label}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="p-4 border-t border-[var(--border-color)] text-center">
+                            <p class="text-sm text-[var(--text-muted)] italic">No vulnerabilities detected</p>
+                        </div>
+                    `}
+                    
+                    <!-- Footer -->
+                    <div class="p-4 border-t border-[var(--border-color)]">
+                        <button class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors text-sm">
+                            View Full Report
+                        </button>
+                    </div>
+                </div>
+            `;
+        },
+        
+        createMetricBar(label, value) {
+            const color = value >= 85 ? 'success' : value >= 70 ? 'warning' : 'error';
+            
+            return `
+                <div>
+                    <div class="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
+                        <span>${label}</span>
+                        <span class="font-medium">${value}%</span>
+                    </div>
+                    <div class="h-2 bg-[var(--bg-side)] rounded-full overflow-hidden">
+                        <div class="h-full bg-[var(--${color})] transition-all" style="width: ${value}%"></div>
+                    </div>
+                </div>
+            `;
+        },
+        
+        calculateHealthStatus(metrics) {
+            const avg = (metrics.serviceStability + metrics.customerSentiment + metrics.marketPresence) / 3;
+            if (avg >= 85) return 'stable';
+            if (avg >= 70) return 'growing';
+            return 'vulnerable';
+        },
+        
+        getVulnColor(severity) {
+            const colors = {
+                high: 'bg-[var(--error-light)] text-[var(--error)]',
+                medium: 'bg-[var(--warning-light)] text-[var(--warning)]',
+                low: 'bg-[var(--info-light)] text-[var(--info)]'
+            };
+            return colors[severity] || colors.low;
+        },
+        
+        highlightCard(compId) {
+            const card = document.getElementById(`card-${compId}`);
+            if (!card) return;
+            
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.classList.add('ring-2', 'ring-[var(--accent)]');
+            
+            setTimeout(() => {
+                card.classList.remove('ring-2', 'ring-[var(--accent)]');
+            }, 2000);
+        },
+        
+        filterGrid(status) {
+            const cards = document.querySelectorAll('.intelligence-card');
+            
+            cards.forEach(card => {
+                if (status === 'all' || card.dataset.status === status) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        },
+        
+        checkVulnerabilities(comp) {
+            const highVulns = comp.vulnerabilities.filter(v => v.found && v.severity === 'high');
+            
+            if (highVulns.length > 0) {
+                this.showVulnerabilityAlert(comp, highVulns[0]);
+            }
+        },
+        
+        showVulnerabilityAlert(comp, vuln) {
+            const container = document.getElementById('alerts-container');
+            
+            const alert = document.createElement('div');
+            alert.className = 'bg-white rounded-lg shadow-xl border-2 border-[var(--error)] p-4 fade-in';
+            alert.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="text-2xl">⚠️</div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-[var(--error)] text-sm">Vulnerability Detected</h4>
+                        <p class="text-sm text-[var(--text-main)] mt-1">
+                            <strong>${comp.name}</strong>: ${vuln.label}
+                        </p>
+                        <p class="text-xs text-[var(--text-secondary)] mt-1">Severity: ${vuln.severity}</p>
+                    </div>
+                    <button onclick="this.closest('.fade-in').remove()" 
+                            class="text-[var(--text-muted)] hover:text-[var(--text-main)]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="mt-3 pt-3 border-t border-[var(--border-color)]">
+                    <button onclick="ShadowPlugin.exploitWithGhost('${comp.id}')" 
+                            class="w-full px-3 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm">
+                        Exploit with Ghost Writer →
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(alert);
+            
+            // Auto-dismiss after 10 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 10000);
+        },
+        
+        exploitWithGhost(compId) {
+            const comp = this.competitors.find(c => c.id === compId);
+            if (!comp) return;
+            
+            // Save competitor ID (not full object)
+            window.Sovereign.saveToLocalStorage('shadow_selected_competitor_id', comp.id);
+            
+            window.Sovereign.showNotification(
+                `Sending ${comp.name} intel to Ghost Writer...`,
+                'info'
+            );
+            
+            // Navigate to Ghost Writer
+            setTimeout(() => {
+                const ghostLink = document.querySelector('a[href="/plugins/ghost"]');
+                if (ghostLink) {
+                    ghostLink.click();
+                }
+            }, 500);
+        }
+    };
+    
+    // Initialize on load
+    ShadowPlugin.init();
+    
+    // Export to global
+    window.ShadowPlugin = ShadowPlugin;
+})();
+</script>
+
+<style>
+/* Modal backdrop click to close */
+#add-competitor-modal {
+    backdrop-filter: blur(4px);
+}
+
+#add-competitor-modal > div {
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Smooth transitions */
+.intelligence-card {
+    transition: all 0.2s ease-in-out;
+}
+</style>

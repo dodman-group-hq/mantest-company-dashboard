@@ -1,0 +1,426 @@
+<!-- 
+    ICP (Ideal Customer Profile) Settings
+    This HTML is returned by: GET /api/settings/icp
+    Allows users to define their target customer profile for AI plugins
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-[var(--text-main)]">ICP Settings</h1>
+        <p class="text-[var(--text-secondary)] mt-2">
+            Define your Ideal Customer Profile to help AI plugins find the best leads
+        </p>
+    </div>
+    
+    <!-- Save Status -->
+    <div id="save-status" class="hidden mb-4 px-4 py-3 rounded-lg">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium">ICP settings saved successfully</span>
+        </div>
+    </div>
+    
+    <form id="icp-form" class="space-y-6">
+        
+        <!-- Company Demographics -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Company Demographics</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Industry -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Industry
+                    </label>
+                    <input type="text" 
+                           id="industry"
+                           name="industry"
+                           placeholder="e.g., SaaS, E-commerce, FinTech"
+                           class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Primary industry or vertical</p>
+                </div>
+                
+                <!-- Company Size -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Company Size
+                    </label>
+                    <select id="company_size" 
+                            name="company_size"
+                            class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                        <option value="">Select size range</option>
+                        <option value="1-10">1-10 employees</option>
+                        <option value="11-50">11-50 employees</option>
+                        <option value="51-200">51-200 employees</option>
+                        <option value="201-500">201-500 employees</option>
+                        <option value="501-1000">501-1000 employees</option>
+                        <option value="1001+">1000+ employees</option>
+                    </select>
+                </div>
+                
+                <!-- Revenue Range -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Revenue Range
+                    </label>
+                    <select id="revenue_range" 
+                            name="revenue_range"
+                            class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                        <option value="">Select revenue range</option>
+                        <option value="0-1M">$0 - $1M</option>
+                        <option value="1M-10M">$1M - $10M</option>
+                        <option value="10M-50M">$10M - $50M</option>
+                        <option value="50M-100M">$50M - $100M</option>
+                        <option value="100M+">$100M+</option>
+                    </select>
+                </div>
+                
+                <!-- Funding Stage -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Funding Stage
+                    </label>
+                    <select id="funding_stage" 
+                            name="funding_stage"
+                            class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                        <option value="">Select funding stage</option>
+                        <option value="bootstrapped">Bootstrapped</option>
+                        <option value="pre-seed">Pre-seed</option>
+                        <option value="seed">Seed</option>
+                        <option value="series-a">Series A</option>
+                        <option value="series-b">Series B</option>
+                        <option value="series-c">Series C+</option>
+                        <option value="public">Public</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Geographic Preferences -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Geographic Preferences</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Target Regions -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Target Regions
+                    </label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="regions" value="north-america" class="mr-2 rounded border-[var(--border-color)]">
+                            <span class="text-sm">North America</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="regions" value="europe" class="mr-2 rounded border-[var(--border-color)]">
+                            <span class="text-sm">Europe</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="regions" value="asia-pacific" class="mr-2 rounded border-[var(--border-color)]">
+                            <span class="text-sm">Asia-Pacific</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="regions" value="latin-america" class="mr-2 rounded border-[var(--border-color)]">
+                            <span class="text-sm">Latin America</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" name="regions" value="middle-east-africa" class="mr-2 rounded border-[var(--border-color)]">
+                            <span class="text-sm">Middle East & Africa</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Specific Countries -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Specific Countries (Optional)
+                    </label>
+                    <textarea id="countries" 
+                              name="countries"
+                              rows="5"
+                              placeholder="e.g., United States, Canada, United Kingdom (one per line)"
+                              class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"></textarea>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Enter specific countries, one per line</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Behavioral Signals -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Behavioral Signals</h2>
+            <p class="text-sm text-[var(--text-secondary)] mb-4">
+                What signals indicate a company is a good fit?
+            </p>
+            
+            <div class="space-y-4">
+                <!-- Signal Type Checkboxes -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="funding_event" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Funding Events</div>
+                            <div class="text-xs text-[var(--text-muted)]">Recently raised capital</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="hiring_spike" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Hiring Spikes</div>
+                            <div class="text-xs text-[var(--text-muted)]">Rapid team expansion</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="product_launch" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Product Launches</div>
+                            <div class="text-xs text-[var(--text-muted)]">New product or feature releases</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="executive_change" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Executive Changes</div>
+                            <div class="text-xs text-[var(--text-muted)]">New C-level hires</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="tech_stack_change" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Tech Stack Changes</div>
+                            <div class="text-xs text-[var(--text-muted)]">Adopting new technologies</div>
+                        </div>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer">
+                        <input type="checkbox" name="signals" value="pain_point" class="mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Pain Points</div>
+                            <div class="text-xs text-[var(--text-muted)]">Expressing challenges publicly</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Keywords & Exclusions -->
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Keywords & Exclusions</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Include Keywords -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Include Keywords
+                    </label>
+                    <textarea id="include_keywords" 
+                              name="include_keywords"
+                              rows="4"
+                              placeholder="e.g., automation, AI, scaling (one per line)"
+                              class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"></textarea>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Companies mentioning these terms</p>
+                </div>
+                
+                <!-- Exclude Keywords -->
+                <div>
+                    <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                        Exclude Keywords
+                    </label>
+                    <textarea id="exclude_keywords" 
+                              name="exclude_keywords"
+                              rows="4"
+                              placeholder="e.g., agency, consulting (one per line)"
+                              class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"></textarea>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Companies to filter out</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex justify-between items-center pt-4">
+            <button type="button" 
+                    onclick="ICPSettings.loadDefaults()"
+                    class="px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                Reset to Defaults
+            </button>
+            
+            <div class="flex gap-3">
+                <button type="button" 
+                        onclick="ICPSettings.testICP()"
+                        class="px-6 py-2 border border-[var(--accent)] text-[var(--accent)] rounded-lg hover:bg-[var(--accent-light)] transition-colors">
+                    Test ICP
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                    Save ICP Settings
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function() {
+    const ICPSettings = {
+        
+        init() {
+            // Setup form submission
+            document.getElementById('icp-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveSettings();
+            });
+            
+            // Load existing settings
+            this.loadSettings();
+        },
+        
+        async loadSettings() {
+            try {
+                // Load from API
+                const settings = await window.Sovereign.apiRequest('/api/settings/icp', 'GET');
+                
+                if (settings && settings.icp) {
+                    this.populateForm(settings.icp);
+                }
+            } catch (error) {
+                // Load from localStorage as fallback
+                const settings = window.Sovereign.loadFromLocalStorage('icp_settings', null);
+                if (settings) {
+                    this.populateForm(settings);
+                }
+            }
+        },
+        
+        populateForm(data) {
+            // Company Demographics
+            if (data.industry) document.getElementById('industry').value = data.industry;
+            if (data.company_size) document.getElementById('company_size').value = data.company_size;
+            if (data.revenue_range) document.getElementById('revenue_range').value = data.revenue_range;
+            if (data.funding_stage) document.getElementById('funding_stage').value = data.funding_stage;
+            
+            // Geographic Preferences
+            if (data.regions) {
+                data.regions.forEach(region => {
+                    const checkbox = document.querySelector(`input[name="regions"][value="${region}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+            if (data.countries) document.getElementById('countries').value = data.countries;
+            
+            // Behavioral Signals
+            if (data.signals) {
+                data.signals.forEach(signal => {
+                    const checkbox = document.querySelector(`input[name="signals"][value="${signal}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+            
+            // Keywords
+            if (data.include_keywords) document.getElementById('include_keywords').value = data.include_keywords;
+            if (data.exclude_keywords) document.getElementById('exclude_keywords').value = data.exclude_keywords;
+        },
+        
+        async saveSettings() {
+            const formData = this.getFormData();
+            
+            try {
+                // Save to API
+                await window.Sovereign.apiRequest('/api/settings/icp', 'POST', formData);
+                
+                // Also save to localStorage
+                window.Sovereign.saveToLocalStorage('icp_settings', formData);
+                
+                // Show success
+                this.showSaveStatus(true);
+                window.Sovereign.showNotification('ICP settings saved successfully', 'success');
+                
+            } catch (error) {
+                console.error('Failed to save ICP settings:', error);
+                
+                // Fallback to localStorage only
+                window.Sovereign.saveToLocalStorage('icp_settings', formData);
+                this.showSaveStatus(true);
+                window.Sovereign.showNotification('ICP settings saved locally', 'warning');
+            }
+        },
+        
+        getFormData() {
+            // Get all regions
+            const regions = Array.from(document.querySelectorAll('input[name="regions"]:checked'))
+                .map(cb => cb.value);
+            
+            // Get all signals
+            const signals = Array.from(document.querySelectorAll('input[name="signals"]:checked'))
+                .map(cb => cb.value);
+            
+            return {
+                industry: document.getElementById('industry').value,
+                company_size: document.getElementById('company_size').value,
+                revenue_range: document.getElementById('revenue_range').value,
+                funding_stage: document.getElementById('funding_stage').value,
+                regions: regions,
+                countries: document.getElementById('countries').value,
+                signals: signals,
+                include_keywords: document.getElementById('include_keywords').value,
+                exclude_keywords: document.getElementById('exclude_keywords').value,
+                updated_at: new Date().toISOString()
+            };
+        },
+        
+        showSaveStatus(success) {
+            const status = document.getElementById('save-status');
+            status.classList.remove('hidden');
+            
+            if (success) {
+                status.classList.add('bg-[var(--success-light)]', 'text-[var(--success)]');
+            } else {
+                status.classList.add('bg-[var(--error-light)]', 'text-[var(--error)]');
+            }
+            
+            setTimeout(() => {
+                status.classList.add('hidden');
+            }, 3000);
+        },
+        
+        loadDefaults() {
+            if (!confirm('Reset all ICP settings to defaults?')) return;
+            
+            // Clear form
+            document.getElementById('icp-form').reset();
+            
+            window.Sovereign.showNotification('ICP settings reset to defaults', 'info');
+        },
+        
+        async testICP() {
+            const formData = this.getFormData();
+            
+            window.Sovereign.showNotification('Testing ICP configuration...', 'info');
+            
+            // Show a summary
+            const summary = `
+                <div class="text-sm">
+                    <p><strong>Industry:</strong> ${formData.industry || 'Not set'}</p>
+                    <p><strong>Company Size:</strong> ${formData.company_size || 'Not set'}</p>
+                    <p><strong>Regions:</strong> ${formData.regions.length} selected</p>
+                    <p><strong>Signals:</strong> ${formData.signals.length} selected</p>
+                </div>
+            `;
+            
+            window.Sovereign.showModal('ICP Test Summary', summary);
+        }
+    };
+    
+    // Initialize
+    ICPSettings.init();
+    
+    // Export to global
+    window.ICPSettings = ICPSettings;
+})();
+</script>

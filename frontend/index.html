@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sovereign Dashboard - AI-Powered Business Intelligence">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; 
+                   style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; 
+                   font-src 'self' https://fonts.gstatic.com;
+                   img-src 'self' data: https:;
+                   connect-src 'self' /api/*;">
+    
+    <title>Sovereign Dashboard | {{CLIENT_NAME}}</title>
+    
+    <!-- Favicon (Replaced during Mirroring) -->
+    <link rel="icon" type="image/png" href="/assets/favicon.png">
+    
+    <!-- Mirror Theme Engine -->
+    <link rel="stylesheet" href="/css/theme.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Tailwind Config Override -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--primary)',
+                        secondary: 'var(--secondary)',
+                        accent: 'var(--accent)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="antialiased">
+    
+    <!-- Main App Container -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- ============================================================ -->
+        <!-- SIDEBAR NAVIGATION                                           -->
+        <!-- ============================================================ -->
+        <aside id="sidebar" class="flex flex-col w-64 bg-[var(--bg-side)] border-r border-[var(--border-color)] transition-all duration-300">
+            
+            <!-- Logo Section (Replaced during Mirroring) -->
+            <div class="flex items-center justify-between h-16 px-6 border-b border-[var(--border-color)]">
+                <div class="flex items-center space-x-3">
+                    <img id="sovereign-logo" 
+                         src="/assets/logo.svg" 
+                         alt="Sovereign Logo" 
+                         class="h-8 w-auto">
+                    <span id="sovereign-name" class="text-lg font-semibold text-[var(--text-main)]">
+                        {{CLIENT_NAME}}
+                    </span>
+                </div>
+                
+                <!-- Sidebar Toggle (Mobile) -->
+                <button id="sidebar-toggle" 
+                        class="lg:hidden text-[var(--text-secondary)] hover:text-[var(--text-main)]"
+                        onclick="toggleSidebar()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                
+                <!-- Dashboard -->
+                <a href="/" 
+                   hx-get="/api/dashboard/overview" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    Dashboard
+                </a>
+                
+                <!-- Section: Intelligence -->
+                <div class="pt-4">
+                    <p class="px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                        Intelligence
+                    </p>
+                </div>
+                
+                <!-- Sniper Plugin -->
+                <a href="/plugins/sniper" 
+                   hx-get="/api/plugins/sniper/dashboard" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    Lead Sniper
+                    <span class="ml-auto px-2 py-1 text-xs font-medium bg-[var(--accent)] text-white rounded-full">
+                        New
+                    </span>
+                </a>
+                
+                <!-- Shadow Plugin -->
+                <a href="/plugins/shadow" 
+                   hx-get="/api/plugins/shadow/dashboard" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Shadow Intelligence
+                </a>
+                
+                <!-- Ghost Writer Plugin -->
+                <a href="/plugins/ghost" 
+                hx-get="/api/plugins/ghost/dashboard" 
+                hx-target="#main-content" 
+                hx-push-url="true"
+                class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Ghost Writer
+                </a>
+                
+                <!-- Section: Settings -->
+                <div class="pt-4">
+                    <p class="px-4 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+                        Settings
+                    </p>
+                </div>
+                
+                <!-- ICP Configuration -->
+                <a href="/settings/icp" 
+                   hx-get="/api/settings/icp" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                    </svg>
+                    ICP Settings
+                </a>
+                
+                <!-- Plugins Management (Founder Only) -->
+                <a href="/settings/plugins" 
+                   hx-get="/api/settings/plugins" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link founder-only flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                    </svg>
+                    Plugin Manager
+                </a>
+                
+                <!-- API Settings -->
+                <a href="/settings/api" 
+                   hx-get="/api/settings/api" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    API Settings
+                </a>
+            </nav>
+            
+            <!-- Sidebar Footer -->
+            <div class="px-4 py-4 border-t border-[var(--border-color)]">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium">
+                            {{USER_INITIALS}}
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-[var(--text-main)] truncate">
+                            {{USER_NAME}}
+                        </p>
+                        <p class="text-xs text-[var(--text-secondary)] truncate">
+                            {{USER_ROLE}}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- ============================================================ -->
+        <!-- MAIN CONTENT AREA                                            -->
+        <!-- ============================================================ -->
+        <div class="flex flex-col flex-1 overflow-hidden">
+            
+            <!-- Top Bar -->
+            <header class="flex items-center justify-between h-16 px-6 bg-white border-b border-[var(--border-color)]">
+                
+                <!-- Breadcrumb / Page Title -->
+                <div class="flex items-center space-x-4">
+                    <button class="lg:hidden text-[var(--text-secondary)] hover:text-[var(--text-main)]"
+                            onclick="toggleSidebar()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                    
+                    <div id="breadcrumb" class="text-sm text-[var(--text-secondary)]">
+                        <!-- Dynamically updated -->
+                        <span class="font-medium text-[var(--text-main)]">Dashboard</span>
+                    </div>
+                </div>
+                
+                <!-- Top Bar Actions -->
+                <div class="flex items-center space-x-4">
+                    
+                    <!-- Sovereign Status Indicator -->
+                    <div class="flex items-center space-x-2 px-3 py-1 bg-[var(--success-light)] rounded-full">
+                        <div class="w-2 h-2 bg-[var(--success)] rounded-full animate-pulse"></div>
+                        <span class="text-xs font-medium text-[var(--success-dark)]">
+                            Core Active
+                        </span>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="relative text-[var(--text-secondary)] hover:text-[var(--text-main)]"
+                            onclick="toggleNotifications()">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span id="notification-badge" class="absolute top-0 right-0 block w-2 h-2 bg-[var(--error)] rounded-full hidden"></span>
+                    </button>
+                    
+                    <!-- User Profile Dropdown -->
+                    <div class="relative">
+                        <button class="flex items-center space-x-2 text-sm focus:outline-none"
+                                onclick="toggleUserMenu()">
+                            <div class="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium">
+                                {{USER_INITIALS}}
+                            </div>
+                        </button>
+                        
+                        <!-- Dropdown Menu (Hidden by default) -->
+                        <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-[var(--border-color)] z-50">
+                            <a href="/profile" class="block px-4 py-2 text-sm hover:bg-[var(--bg-hover)]">Profile</a>
+                            <a href="/settings" class="block px-4 py-2 text-sm hover:bg-[var(--bg-hover)]">Settings</a>
+                            <hr class="my-1 border-[var(--border-color)]">
+                            <a href="/logout" class="block px-4 py-2 text-sm text-[var(--error)] hover:bg-[var(--bg-hover)]">Sign Out</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content Area (HTMX Target) -->
+            <main id="main-content" class="flex-1 overflow-y-auto p-6 bg-[var(--bg-main)]">
+                
+                <!-- Default Content (Replaced by HTMX) -->
+                <div class="fade-in">
+                    <h1 class="text-3xl font-bold text-[var(--text-main)] mb-6">
+                        Welcome to Sovereign
+                    </h1>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        
+                        <!-- Card: Leads Found -->
+                        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-[var(--text-secondary)]">Leads Found</p>
+                                <svg class="w-5 h-5 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                            </div>
+                            <p class="text-3xl font-bold text-[var(--text-main)]">0</p>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">This week</p>
+                        </div>
+                        
+                        <!-- Card: Active Plugins -->
+                        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-[var(--text-secondary)]">Active Plugins</p>
+                                <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <p class="text-3xl font-bold text-[var(--text-main)]">2</p>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">Sniper, Shadow</p>
+                        </div>
+                        
+                        <!-- Card: API Usage -->
+                        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-[var(--text-secondary)]">API Usage</p>
+                                <svg class="w-5 h-5 text-[var(--info)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <p class="text-3xl font-bold text-[var(--text-main)]">$0.00</p>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">Today</p>
+                        </div>
+                        
+                        <!-- Card: Core Health -->
+                        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm text-[var(--text-secondary)]">Core Health</p>
+                                <div class="w-2 h-2 bg-[var(--success)] rounded-full animate-pulse"></div>
+                            </div>
+                            <p class="text-3xl font-bold text-[var(--text-main)]">100%</p>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">All systems operational</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                        <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Quick Actions</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button class="flex items-center justify-center px-6 py-4 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                Run Scour
+                            </button>
+                            <button class="flex items-center justify-center px-6 py-4 bg-white border-2 border-[var(--accent)] text-[var(--accent)] rounded-lg hover:bg-[var(--accent-light)] transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Add Prospect
+                            </button>
+                            <button class="flex items-center justify-center px-6 py-4 bg-white border border-[var(--border-color)] text-[var(--text-main)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                </svg>
+                                View Reports
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+            </main>
+            
+        </div>
+    </div>
+    
+    <!-- Global JavaScript -->
+    <script src="/js/global.js"></script>
+    
+    <!-- HTMX Event Handlers -->
+    <script>
+        // Handle HTMX events
+        document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+            console.log('Content loaded into:', evt.detail.target);
+            
+            // Execute any plugin-specific JS if present
+            const pluginScripts = evt.detail.target.querySelectorAll('script');
+            pluginScripts.forEach(script => {
+                if (script.src) {
+                    // External script
+                    const newScript = document.createElement('script');
+                    newScript.src = script.src;
+                    document.body.appendChild(newScript);
+                } else {
+                    // Inline script
+                    eval(script.textContent);
+                }
+            });
+            
+            // Update breadcrumb
+            updateBreadcrumb(evt.detail.pathInfo.requestPath);
+        });
+        
+        document.body.addEventListener('htmx:responseError', function(evt) {
+            console.error('HTMX Error:', evt.detail);
+            showNotification('Error loading content. Please try again.', 'error');
+        });
+    </script>
+    
+</body>
+</html>

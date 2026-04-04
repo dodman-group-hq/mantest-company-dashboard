@@ -1,0 +1,10 @@
+Follow this steps to run any tests or programs in master dashboard template locally. Inside master-dashboard-template,
+
+1. Activate virtual environment "venv\Scripts\activate"
+2. Install dodman-core locally, navigate to backend then ' pip install -r requirements.txt '
+4. set the environmental variables by:
+- set DODMAN_CORE_API_URL=https://api.dodman.ai or http://localhost:8080
+- set ENVIRONMENT=development
+- set ALLOWED_ORIGINS=https://dashboard.dodman.ai,https://*.dodman.ai # already set to all *
+- set SESSION_SECRET=<random-secure-key>
+5. Run the specific python file python backend/main.py

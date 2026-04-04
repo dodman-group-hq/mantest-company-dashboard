@@ -1,0 +1,435 @@
+<!-- 
+    AI Lead Sniper Plugin Dashboard
+    This HTML is returned by: GET /api/plugins/sniper/dashboard
+    Rendered into: #main-content via HTMX
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-[var(--text-main)]">🎯 AI Lead Sniper</h1>
+            <p class="text-[var(--text-secondary)] mt-1">Real-time lead capture from social signals</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="sniper-status" class="px-3 py-1 text-sm rounded-full bg-[var(--bg-side)] text-[var(--text-secondary)]">
+                Idle
+            </span>
+            <button id="export-btn" 
+                    class="px-4 py-2 bg-white border border-[var(--border-color)] text-[var(--text-main)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
+                    disabled>
+                Export Leads
+            </button>
+        </div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Target Parameters -->
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Target Parameters
+                </label>
+                <input type="text" 
+                       id="target-params"
+                       placeholder="e.g., SaaS companies, Series A funding"
+                       class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+            </div>
+            
+            <!-- Scan Intensity -->
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Scan Intensity: <span id="intensity-value">50</span>%
+                </label>
+                <input type="range" 
+                       id="scan-intensity"
+                       min="10" 
+                       max="100" 
+                       value="50"
+                       class="w-full h-2 bg-[var(--bg-side)] rounded-lg appearance-none cursor-pointer"
+                       oninput="document.getElementById('intensity-value').textContent = this.value">
+            </div>
+            
+            <!-- Scan Button -->
+            <div class="flex items-end">
+                <button id="scan-toggle" 
+                        onclick="SniperPlugin.toggleScan()"
+                        class="w-full px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                    ▶ Start Scan
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content: Two Columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Live Signal Feed -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] h-[600px] flex flex-col">
+                <div class="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+                    <h3 class="font-semibold text-[var(--text-main)]">Live Signal Feed</h3>
+                    <span id="signal-count" class="text-sm text-[var(--text-muted)]">0 signals</span>
+                </div>
+                
+                <div id="signal-feed" class="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div class="text-center text-[var(--text-muted)] py-12">
+                        <p>Start scan to monitor signals...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right: Found Targets -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
+                <div class="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+                    <h3 class="font-semibold text-[var(--text-main)]">Found Targets</h3>
+                    <span id="target-count" class="text-sm text-[var(--text-muted)]">0 leads</span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-[var(--bg-side)]">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Company</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Signal</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Score</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Source</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="targets-body" class="divide-y divide-[var(--border-color)]">
+                            <tr>
+                                <td colspan="5" class="px-4 py-12 text-center text-[var(--text-muted)]">
+                                    No targets found yet
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer Actions -->
+    <div class="mt-6 flex justify-end gap-4">
+        <button id="send-to-ghost" 
+                onclick="SniperPlugin.sendToGhost()"
+                class="px-6 py-3 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                disabled>
+            Send to Ghost Writer (0 selected) →
+        </button>
+    </div>
+</div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function() {
+    const SniperPlugin = {
+        isScanning: false,
+        scanInterval: null,
+        leads: [],
+        selectedLeads: [],
+        sources: ['Twitter', 'LinkedIn', 'Reddit', 'HN', 'GitHub'],
+        signalTypes: ['funding_event', 'hiring_spike', 'product_launch', 'pain_point'],
+
+        // Add to plugin init
+        async init() {
+            // Load existing leads on page load
+            await this.loadLeads();
+            
+            // Check plugin status
+            await this.checkStatus();
+        },
+        
+        toggleScan() {
+            if (this.isScanning) {
+                this.stopScan();
+            } else {
+                this.startScan();
+            }
+        },
+        
+        async startScan() {
+            this.isScanning = true;
+            const targetParams = document.getElementById('target-params').value;
+            const intensity = document.getElementById('scan-intensity').value;
+            
+            // Update UI
+            document.getElementById('scan-toggle').innerHTML = '⏸ Stop Scan';
+            document.getElementById('sniper-status').textContent = 'Scanning...';
+            
+            try {
+                // Call real API
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/run-scour`,
+                    'POST',
+                    {
+                        sources: ['twitter', 'apollo', 'google_news', 'job_boards'],
+                        max_leads: parseInt(intensity),
+                        async_mode: false
+                    }
+                );
+                
+                if (result.success) {
+                    window.Sovereign.showNotification(
+                        `Scan completed! Found ${result.leads_found} leads`,
+                        'success'
+                    );
+                    
+                    // Load leads from API
+                    await this.loadLeads();
+                }
+            } catch (error) {
+                console.error('Scan error:', error);
+                window.Sovereign.showNotification('Scan failed', 'error');
+            }
+            
+            this.isScanning = false;
+            this.stopScan();
+        },
+        
+        stopScan() {
+            this.isScanning = false;
+            
+            if (this.scanInterval) {
+                clearInterval(this.scanInterval);
+                this.scanInterval = null;
+            }
+            
+            // Update UI
+            document.getElementById('scan-toggle').innerHTML = '▶ Start Scan';
+            document.getElementById('scan-toggle').classList.remove('bg-[var(--error)]');
+            document.getElementById('sniper-status').textContent = 'Idle';
+            document.getElementById('sniper-status').classList.remove('bg-[var(--success-light)]', 'text-[var(--success-dark)]', 'animate-pulse');
+            
+            window.Sovereign.showNotification('Scan stopped', 'info');
+        },
+        
+        generateSignal() {
+            const source = this.sources[Math.floor(Math.random() * this.sources.length)];
+            const type = this.signalTypes[Math.floor(Math.random() * this.signalTypes.length)];
+            
+            this.addSignalToFeed({ source, type, timestamp: new Date() });
+            
+            // 20% chance to generate a lead
+            if (Math.random() < 0.2) {
+                this.generateLead({ source, type });
+            }
+        },
+        
+        addSignalToFeed(signal) {
+            const feed = document.getElementById('signal-feed');
+            const signalEl = document.createElement('div');
+            signalEl.className = 'p-3 bg-[var(--bg-side)] rounded-lg border-l-4 border-[var(--accent)]';
+            signalEl.innerHTML = `
+                <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
+                    <span class="font-medium text-[var(--accent)]">${signal.source}</span>
+                    <span>${new Date().toLocaleTimeString()}</span>
+                </div>
+                <p class="text-sm text-[var(--text-main)]">${this.generateRawSignal(signal.type)}</p>
+            `;
+            
+            feed.insertBefore(signalEl, feed.firstChild);
+            
+            // Keep only last 20
+            while (feed.children.length > 20) {
+                feed.removeChild(feed.lastChild);
+            }
+            
+            document.getElementById('signal-count').textContent = `${feed.children.length} signals`;
+        },
+        
+        generateRawSignal(type) {
+            const templates = {
+                funding_event: "Company just raised $5M in funding",
+                hiring_spike: "Hiring for 10 new positions this month",
+                product_launch: "Launched new product suite",
+                pain_point: "CEO mentioned 'struggling with automation' in interview"
+            };
+            return templates[type] || "New signal detected";
+        },
+        
+        generateLead(signal) {
+            const companies = ['Acme Corp', 'TechStart Inc', 'DataFlow Systems', 'CloudNine Co'];
+            const lead = {
+                id: 'lead_' + Date.now(),
+                company: companies[Math.floor(Math.random() * companies.length)],
+                signal: signal.type.replace('_', ' '),
+                score: Math.floor(Math.random() * 30) + 70,
+                source: signal.source,
+                selected: false
+            };
+            
+            this.leads.push(lead);
+            this.addLeadToTable(lead);
+        },
+        
+        addLeadToTable(lead) {
+            const tbody = document.getElementById('targets-body');
+            
+            // Remove empty state
+            if (tbody.querySelector('td[colspan="5"]')) {
+                tbody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            row.dataset.leadId = lead.id;
+            row.className = 'hover:bg-[var(--bg-hover)] transition-colors';
+            
+            const scoreColor = lead.score >= 90 ? 'success' : lead.score >= 75 ? 'warning' : 'info';
+            
+            row.innerHTML = `
+                <td class="px-4 py-3 text-sm text-[var(--text-main)] font-medium">${lead.company}</td>
+                <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-1 text-xs font-medium bg-[var(--accent-light)] text-[var(--accent)] rounded">${lead.signal}</span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-1 text-xs font-medium bg-[var(--${scoreColor}-light)] text-[var(--${scoreColor})] rounded">${lead.score}</span>
+                </td>
+                <td class="px-4 py-3 text-sm text-[var(--text-secondary)]">${lead.source}</td>
+                <td class="px-4 py-3 text-sm">
+                    <button onclick="SniperPlugin.togglePin('${lead.id}')" 
+                            class="pin-btn px-3 py-1 text-xs border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors">
+                        📌 Pin
+                    </button>
+                </td>
+            `;
+            
+            tbody.insertBefore(row, tbody.firstChild);
+            
+            document.getElementById('target-count').textContent = `${this.leads.length} leads`;
+        },
+        
+        async loadLeads(minScore = 0) {
+            try {
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/leads?min_score=${minScore}`,
+                    'GET'
+                );
+                
+                if (result.success) {
+                    this.leads = result.leads.map(lead => ({
+                        id: lead.prospect_id,
+                        company: lead.identity?.name || 'Unknown',
+                        signal: lead.signal_type?.replace('_', ' ') || 'Unknown',
+                        score: lead.score || 0,
+                        source: lead.source || 'API',
+                        selected: false,
+                        rawData: lead // Store full lead data
+                    }));
+                    
+                    // Clear table
+                    const tbody = document.getElementById('targets-body');
+                    tbody.innerHTML = '';
+                    
+                    // Populate table
+                    this.leads.forEach(lead => this.addLeadToTable(lead));
+                    
+                    document.getElementById('target-count').textContent = `${this.leads.length} leads`;
+                }
+            } catch (error) {
+                console.error('Error loading leads:', error);
+                window.Sovereign.showNotification('Failed to load leads', 'error');
+            }
+        },
+        
+        togglePin(leadId) {
+            const lead = this.leads.find(l => l.id === leadId);
+            if (!lead) return;
+            
+            lead.selected = !lead.selected;
+            
+            const row = document.querySelector(`tr[data-lead-id="${leadId}"]`);
+            const pinBtn = row.querySelector('.pin-btn');
+            
+            if (lead.selected) {
+                row.classList.add('bg-[var(--accent-light)]');
+                pinBtn.textContent = '✓ Pinned';
+                pinBtn.classList.add('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]');
+                this.selectedLeads.push(lead);
+            } else {
+                row.classList.remove('bg-[var(--accent-light)]');
+                pinBtn.textContent = '📌 Pin';
+                pinBtn.classList.remove('bg-[var(--accent)]', 'text-white', 'border-[var(--accent)]');
+                this.selectedLeads = this.selectedLeads.filter(l => l.id !== leadId);
+            }
+            
+            // Update buttons
+            const sendBtn = document.getElementById('send-to-ghost');
+            const exportBtn = document.getElementById('export-btn');
+            
+            sendBtn.textContent = `Send to Ghost Writer (${this.selectedLeads.length} selected) →`;
+            sendBtn.disabled = this.selectedLeads.length === 0;
+            exportBtn.disabled = this.selectedLeads.length === 0;
+        },
+        
+        sendToGhost() {
+            if (this.selectedLeads.length === 0) return;
+            
+            // Store selected lead IDs in localStorage for Ghost
+            const leadIds = this.selectedLeads.map(l => l.id);
+            window.Sovereign.saveToLocalStorage('sniper_selected_lead_ids', leadIds);
+            
+            window.Sovereign.showNotification(
+                `Sending ${this.selectedLeads.length} leads to Ghost Writer...`,
+                'info'
+            );
+            
+            // Navigate to Ghost Writer
+            setTimeout(() => {
+                const ghostLink = document.querySelector('a[href="/plugins/ghost"]');
+                if (ghostLink) {
+                    ghostLink.click();
+                }
+            }, 500);
+        },
+
+        async checkStatus() {
+            try {
+                const status = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/status`,
+                    'GET'
+                );
+                
+                // Update UI with real stats
+                if (status.stats) {
+                    console.log('Sniper stats:', status.stats);
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+        },
+    };
+
+    
+    // Call init when page loads
+    SniperPlugin.init();
+
+    // Export to global
+    window.SniperPlugin = SniperPlugin;
+})();
+</script>
+
+<style>
+/* Custom Range Slider */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 50%;
+}
+</style>

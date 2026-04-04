@@ -1,0 +1,647 @@
+<!-- 
+    Ghost Writer Plugin Dashboard
+    This HTML is returned by: GET /api/plugins/ghost/dashboard
+    Rendered into: #main-content via HTMX
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-[var(--text-main)]">✍️ Ghost Writer</h1>
+            <p class="text-[var(--text-secondary)] mt-1">AI-powered content generation</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="generation-status" class="px-3 py-1 text-sm rounded-full bg-[var(--bg-side)] text-[var(--text-secondary)]">
+                Ready
+            </span>
+        </div>
+    </div>
+    
+    <!-- Context Bar -->
+    <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Pinned Leads -->
+            <div>
+                <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                    Pinned Leads
+                </h4>
+                <div id="leads-context" class="flex flex-wrap gap-2">
+                    <span class="text-sm text-[var(--text-muted)] italic">No leads pinned</span>
+                </div>
+            </div>
+            
+            <!-- Competitor Intel -->
+            <div>
+                <h4 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                    Competitor Intel
+                </h4>
+                <div id="competitor-context" class="flex flex-wrap gap-2">
+                    <span class="text-sm text-[var(--text-muted)] italic">No competitors tracked</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content: Controls + Editor -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left: Controls -->
+        <div class="lg:col-span-1 space-y-4">
+            
+            <!-- Campaign Type -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-4">
+                <h3 class="font-semibold text-[var(--text-main)] mb-3">Campaign Type</h3>
+                <div class="space-y-2">
+                    <button onclick="GhostPlugin.selectCampaignType('outreach')" 
+                            class="campaign-btn active w-full px-4 py-2 text-left text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                            data-type="outreach">
+                        📧 Cold Outreach Email
+                    </button>
+                    <button onclick="GhostPlugin.selectCampaignType('linkedin')" 
+                            class="campaign-btn w-full px-4 py-2 text-left text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                            data-type="linkedin">
+                        💼 LinkedIn Message
+                    </button>
+                    <button onclick="GhostPlugin.selectCampaignType('twitter')" 
+                            class="campaign-btn w-full px-4 py-2 text-left text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                            data-type="twitter">
+                        🐦 Twitter Thread
+                    </button>
+                    <button onclick="GhostPlugin.selectCampaignType('blog')" 
+                            class="campaign-btn w-full px-4 py-2 text-left text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                            data-type="blog">
+                        📝 Blog Post
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tone Selector -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-4">
+                <h3 class="font-semibold text-[var(--text-main)] mb-3">Tone</h3>
+                <div class="space-y-2">
+                    <label class="tone-option flex items-start p-3 border border-[var(--border-color)] rounded-lg cursor-pointer hover:bg-[var(--bg-hover)] transition-colors">
+                        <input type="radio" name="tone" value="aggressive" class="mt-1 mr-3" onchange="GhostPlugin.selectTone('aggressive')">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">🔥 Aggressive</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-1">Direct, urgent, problem-focused</div>
+                        </div>
+                    </label>
+                    
+                    <label class="tone-option active flex items-start p-3 border-2 border-[var(--accent)] rounded-lg cursor-pointer bg-[var(--accent-light)]">
+                        <input type="radio" name="tone" value="consultative" class="mt-1 mr-3" checked onchange="GhostPlugin.selectTone('consultative')">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">🤝 Consultative</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-1">Helpful, advisory, solution-oriented</div>
+                        </div>
+                    </label>
+                    
+                    <label class="tone-option flex items-start p-3 border border-[var(--border-color)] rounded-lg cursor-pointer hover:bg-[var(--bg-hover)] transition-colors">
+                        <input type="radio" name="tone" value="casual" class="mt-1 mr-3" onchange="GhostPlugin.selectTone('casual')">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">😊 Casual</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-1">Friendly, conversational, relaxed</div>
+                        </div>
+                    </label>
+                    
+                    <label class="tone-option flex items-start p-3 border border-[var(--border-color)] rounded-lg cursor-pointer hover:bg-[var(--bg-hover)] transition-colors">
+                        <input type="radio" name="tone" value="formal" class="mt-1 mr-3" onchange="GhostPlugin.selectTone('formal')">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">👔 Formal</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-1">Professional, polished, corporate</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Additional Context -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-4">
+                <h3 class="font-semibold text-[var(--text-main)] mb-3">Additional Context</h3>
+                <textarea id="custom-context" 
+                          rows="4"
+                          placeholder="Add any specific talking points, requirements, or context..."
+                          class="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-y"></textarea>
+            </div>
+            
+            <!-- Generate Button -->
+            <button id="generate-btn" 
+                    onclick="GhostPlugin.generateDraft()"
+                    class="w-full px-6 py-3 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity font-medium">
+                ✨ Generate Draft
+            </button>
+        </div>
+        
+        <!-- Right: The Forge (Editor) -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-[700px]">
+                
+                <!-- Editor Header -->
+                <div class="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+                    <h3 class="font-semibold text-[var(--text-main)]">Draft</h3>
+                    <div class="flex items-center gap-2">
+                        <button id="regenerate-btn" 
+                                onclick="GhostPlugin.regenerateDraft()"
+                                class="px-3 py-1.5 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
+                                disabled>
+                            🔄 Regenerate
+                        </button>
+                        <button id="copy-btn" 
+                                onclick="GhostPlugin.copyToClipboard()"
+                                class="px-3 py-1.5 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
+                                disabled>
+                            📋 Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Editor Content -->
+                <div id="draft-editor" class="flex-1 overflow-y-auto p-6 bg-[var(--bg-side)]">
+                    <div class="text-center text-[var(--text-muted)] py-24">
+                        <svg class="w-16 h-16 mx-auto mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        <p class="font-medium mb-2">Your AI-generated content will appear here</p>
+                        <p class="text-sm">Click "Generate Draft" to start</p>
+                    </div>
+                </div>
+                
+                <!-- Editor Footer -->
+                <div id="draft-meta" class="hidden p-4 border-t border-[var(--border-color)] bg-white">
+                    <div class="flex items-center justify-between text-sm text-[var(--text-secondary)]">
+                        <div class="flex items-center gap-4">
+                            <span>Words: <strong id="word-count">0</strong></span>
+                            <span>Characters: <strong id="char-count">0</strong></span>
+                        </div>
+                        <span id="last-generated" class="text-xs text-[var(--text-muted)]"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer Actions -->
+    <div class="mt-6 flex justify-end gap-4">
+        <button id="save-draft-btn" 
+                onclick="GhostPlugin.saveDraft()"
+                class="px-6 py-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
+                disabled>
+            💾 Save Draft
+        </button>
+        <button id="send-via-core-btn" 
+                onclick="GhostPlugin.sendViaCore()"
+                class="px-6 py-3 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                disabled>
+            🚀 Send via Core API
+        </button>
+    </div>
+</div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function() {
+    const GhostPlugin = {
+        campaignType: 'outreach',
+        tone: 'consultative',
+        currentDraft: null,
+        isGenerating: false,
+        
+        init() {
+            // Load context from localStorage
+            this.loadContexts();
+        },
+        
+        async loadContexts() {
+            // Load pinned leads from localStorage
+            const leadIds = window.Sovereign.getFromLocalStorage('sniper_selected_lead_ids') || [];
+            
+            if (leadIds.length > 0) {
+                // Display lead badges
+                const leadsContainer = document.getElementById('leads-context');
+                leadsContainer.innerHTML = leadIds.map(id => `
+                    <span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded">
+                        Lead: ${id.substring(0, 8)}...
+                    </span>
+                `).join('');
+                
+                this.selectedLeadIds = leadIds;
+            }
+            
+            // Load competitor from localStorage
+            const competitorId = window.Sovereign.getFromLocalStorage('shadow_selected_competitor_id');
+            
+            if (competitorId) {
+                const compContainer = document.getElementById('competitor-context');
+                compContainer.innerHTML = `
+                    <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded">
+                        Competitor: ${competitorId.substring(0, 8)}...
+                    </span>
+                `;
+                
+                this.selectedCompetitorId = competitorId;
+            }
+        },
+        
+        selectCampaignType(type) {
+            this.campaignType = type;
+            
+            // Update UI
+            document.querySelectorAll('.campaign-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-[var(--accent-light)]', 'border-[var(--accent)]');
+            });
+            
+            const selectedBtn = document.querySelector(`.campaign-btn[data-type="${type}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('active', 'bg-[var(--accent-light)]', 'border-[var(--accent)]');
+            }
+        },
+        
+        selectTone(tone) {
+            this.tone = tone;
+            
+            // Update UI
+            document.querySelectorAll('.tone-option').forEach(opt => {
+                opt.classList.remove('active', 'bg-[var(--accent-light)]', 'border-2', 'border-[var(--accent)]');
+                opt.classList.add('border', 'border-[var(--border-color)]');
+            });
+            
+            const selectedOpt = document.querySelector(`input[value="${tone}"]`).closest('.tone-option');
+            if (selectedOpt) {
+                selectedOpt.classList.add('active', 'bg-[var(--accent-light)]', 'border-2', 'border-[var(--accent)]');
+                selectedOpt.classList.remove('border-[var(--border-color)]');
+            }
+        },
+        
+        async generateDraft() {
+            const campaignType = this.selectedCampaignType;
+            const tone = this.selectedTone;
+            const customContext = document.getElementById('custom-context').value;
+            
+            // Disable button
+            const generateBtn = document.getElementById('generate-btn');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '⏳ Generating...';
+            
+            // Update status
+            document.getElementById('generation-status').textContent = 'Generating...';
+            document.getElementById('generation-status').classList.add('animate-pulse');
+            
+            try {
+                // Call real API
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/generate`,
+                    'POST',
+                    {
+                        campaign_type: campaignType,
+                        tone: tone,
+                        lead_id: this.selectedLeadIds?.[0] || null, // Use first lead
+                        competitor_id: this.selectedCompetitorId || null,
+                        custom_context: customContext || null,
+                        manual_trigger: false
+                    }
+                );
+                
+                if (result.success && result.draft) {
+                    this.currentDraft = result.draft;
+                    this.displayDraft(result.draft.content);
+                    
+                    window.Sovereign.showNotification('Draft generated successfully!', 'success');
+                } else {
+                    throw new Error(result.status || 'Generation failed');
+                }
+            } catch (error) {
+                console.error('Generation error:', error);
+                window.Sovereign.showNotification('Failed to generate draft', 'error');
+                
+                // Show error in editor
+                document.getElementById('draft-editor').innerHTML = `
+                    <div class="text-center text-[var(--error)] py-12">
+                        <p class="font-medium mb-2">Generation failed</p>
+                        <p class="text-sm">${error.message || 'Please try again'}</p>
+                    </div>
+                `;
+            } finally {
+                // Re-enable button
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '✨ Generate Draft';
+                
+                document.getElementById('generation-status').textContent = 'Ready';
+                document.getElementById('generation-status').classList.remove('animate-pulse');
+            }
+        },
+        
+        async generateContent(lead, competitor, customContext) {
+            // In production, this would call your AI API
+            // For now, generate template-based content
+            
+            const templates = {
+                outreach: this.generateOutreachEmail(lead, competitor, customContext),
+                linkedin: this.generateLinkedInMessage(lead, competitor, customContext),
+                twitter: this.generateTwitterThread(lead, competitor, customContext),
+                blog: this.generateBlogPost(lead, competitor, customContext)
+            };
+            
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            return templates[this.campaignType] || templates.outreach;
+        },
+        
+        generateOutreachEmail(lead, competitor, customContext) {
+            const compName = competitor ? competitor.name : 'existing solutions';
+            const vulns = competitor ? competitor.vulnerabilities.filter(v => v.found) : [];
+            const vuln = vulns.length > 0 ? vulns[0].label.toLowerCase() : 'inefficiencies';
+            
+            return `Subject: Quick question about ${lead.company}'s ${lead.signal}
+
+Hi [Name],
+
+I noticed ${lead.company} recently ${lead.signal.replace('_', ' ')} - congratulations on the momentum!
+
+I'm reaching out because we work with companies at your stage who are looking to scale efficiently. ${competitor ? `Many of our clients were previously with ${compName}, but made the switch when they needed to address ${vuln}.` : 'We help companies like yours overcome common growth challenges.'}
+
+${customContext ? `\n${customContext}\n` : ''}
+
+Our approach helps companies:
+• Accelerate growth without increasing overhead
+• Automate repetitive processes
+• Scale their operations intelligently
+
+Would you be open to a 15-minute call this week to explore if we could help ${lead.company} achieve similar results?
+
+Best regards,
+[Your Name]
+[Your Title]
+[Your Company]
+
+P.S. I've worked with companies similar to ${lead.company} who saw a 3x improvement in efficiency within 90 days.`;
+        },
+        
+        generateLinkedInMessage(lead, competitor, customContext) {
+            const compName = competitor ? competitor.name : 'traditional tools';
+            
+            return `Hey [Name],
+
+Saw that ${lead.company} is ${lead.signal.replace('_', ' ')} - that's exciting!
+
+We've helped similar companies ${competitor ? `move away from solutions like ${compName}` : 'scale efficiently'} by automating their most time-consuming processes.
+
+${customContext ? `\n${customContext}\n` : ''}
+
+Worth a quick chat to see if we can help accelerate your growth?
+
+Cheers,
+[Your Name]`;
+        },
+        
+        generateTwitterThread(lead, competitor, customContext) {
+            const compName = competitor ? competitor.name : 'existing solutions';
+            
+            return `🧵 Thread: Why ${lead.company}'s recent ${lead.signal.replace('_', ' ')} is a big deal
+
+1/ ${lead.company} just ${lead.signal.replace('_', ' ')}. Here's why this matters for the industry...
+
+2/ Companies at this stage typically struggle with scaling operations${competitor ? `, especially if they're using legacy tools like ${compName}` : ''}.
+
+3/ The smart move? Automate early, scale efficiently, and avoid the common pitfalls.
+
+${customContext ? `\n4/ ${customContext}\n` : ''}
+
+5/ We're seeing a major shift in how companies approach growth. The winners are those who invest in automation NOW, not later.
+
+6/ Congrats to the ${lead.company} team. Looking forward to seeing what's next! 🚀`;
+        },
+        
+        generateBlogPost(lead, competitor, customContext) {
+            const compName = competitor ? competitor.name : 'traditional approaches';
+            
+            return `# How ${lead.company}'s ${lead.signal.replace('_', ' ')} Signals a Major Market Shift
+
+## Introduction
+
+When ${lead.company} recently ${lead.signal.replace('_', ' ')}, it wasn't just another company milestone. It's a signal that the market is fundamentally evolving.
+
+${competitor ? `## The Problem with Existing Solutions
+
+For years, companies in this space have relied on solutions like ${compName}. But as ${lead.company} demonstrates, that model is changing.
+
+The vulnerabilities in traditional approaches are becoming clear:
+${competitor.vulnerabilities.filter(v => v.found).map(v => `- ${v.label}`).join('\n')}` : ''}
+
+## The New Approach
+
+${customContext || 'Companies like yours are pioneering a different way - one that prioritizes automation, efficiency, and scalability.'}
+
+## What This Means for the Industry
+
+The ${lead.company} announcement is just the beginning. We're seeing:
+
+1. **Increased automation adoption** - Companies are realizing manual processes don't scale
+2. **Move away from legacy tools** - Modern problems require modern solutions
+3. **Focus on efficiency** - Growth without proportional cost increases
+
+## Conclusion
+
+${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a blueprint for what's coming next in our industry.
+
+---
+
+*Want to learn how your company can achieve similar results? [Contact us] to discuss your growth strategy.*`;
+        },
+        
+        async typeWriterEffect(text) {
+            const editor = document.getElementById('draft-editor');
+            editor.innerHTML = '<div id="typewriter-content" class="font-mono text-sm text-[var(--text-main)] whitespace-pre-wrap leading-relaxed"></div>';
+            
+            const container = document.getElementById('typewriter-content');
+            let index = 0;
+            
+            return new Promise((resolve) => {
+                const interval = setInterval(() => {
+                    if (index < text.length) {
+                        container.textContent += text[index];
+                        index++;
+                        
+                        // Auto-scroll
+                        editor.scrollTop = editor.scrollHeight;
+                    } else {
+                        clearInterval(interval);
+                        
+                        // Convert to editable textarea
+                        editor.innerHTML = `
+                            <textarea id="draft-textarea" 
+                                      class="w-full h-full p-0 border-none bg-transparent text-sm text-[var(--text-main)] font-mono resize-none focus:outline-none"
+                                      oninput="GhostPlugin.onDraftEdit()">${text}</textarea>
+                        `;
+                        
+                        resolve();
+                    }
+                }, 10); // Typing speed
+            });
+        },
+
+        displayDraft(content) {
+            const editor = document.getElementById('draft-editor');
+            
+            // Display content with formatting
+            editor.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="prose max-w-none">
+                        ${content.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+            
+            // Show meta footer
+            document.getElementById('draft-meta').classList.remove('hidden');
+            
+            // Update counts
+            const words = content.split(/\s+/).length;
+            const chars = content.length;
+            
+            document.getElementById('word-count').textContent = words;
+            document.getElementById('char-count').textContent = chars;
+            document.getElementById('last-generated').textContent = 
+                `Generated ${new Date().toLocaleTimeString()}`;
+            
+            // Enable action buttons
+            document.getElementById('regenerate-btn').disabled = false;
+            document.getElementById('copy-btn').disabled = false;
+            document.getElementById('save-draft-btn').disabled = false;
+            document.getElementById('send-via-core-btn').disabled = false;
+        },
+        
+        onDraftEdit() {
+            const textarea = document.getElementById('draft-textarea');
+            if (textarea) {
+                this.currentDraft = textarea.value;
+                this.updateDraftMeta(textarea.value);
+            }
+        },
+        
+        async regenerateDraft() {
+            if (this.isGenerating) return;
+            
+            window.Sovereign.showNotification('Regenerating with different approach...', 'info');
+            await this.generateDraft();
+        },
+        
+        copyToClipboard() {
+            const textarea = document.getElementById('draft-textarea');
+            if (!textarea) return;
+            
+            window.Sovereign.copyToClipboard(this.currentDraft);
+            
+            // Visual feedback
+            const copyBtn = document.getElementById('copy-btn');
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '✓ Copied';
+            copyBtn.classList.add('bg-[var(--success-light)]', 'text-[var(--success)]', 'border-[var(--success)]');
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.classList.remove('bg-[var(--success-light)]', 'text-[var(--success)]', 'border-[var(--success)]');
+            }, 2000);
+        },
+        
+        saveDraft() {
+            if (!this.currentDraft) return;
+            
+            const drafts = window.Sovereign.loadFromLocalStorage('ghost_drafts', []);
+            drafts.push({
+                id: 'draft_' + Date.now(),
+                content: this.currentDraft,
+                campaignType: this.campaignType,
+                tone: this.tone,
+                createdAt: new Date().toISOString()
+            });
+            window.Sovereign.saveToLocalStorage('ghost_drafts', drafts);
+            
+            window.Sovereign.showNotification('Draft saved successfully', 'success');
+        },
+        
+        async sendViaCore() {
+            if (!this.currentDraft) {
+                window.Sovereign.showNotification('No draft to send', 'error');
+                return;
+            }
+            
+            // For now, get recipient from user (you can enhance this)
+            const recipient = prompt('Enter recipient email:');
+            if (!recipient) return;
+            
+            try {
+                const result = await window.Sovereign.apiRequest(
+                    `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/send`,
+                    'POST',
+                    {
+                        draft_id: this.currentDraft.draft_id,
+                        recipients: [recipient],
+                        send_via: 'email'
+                    }
+                );
+                
+                if (result.status === 'success') {
+                    window.Sovereign.showNotification(
+                        `Campaign sent to ${recipient}!`,
+                        'success'
+                    );
+                }
+            } catch (error) {
+                console.error('Send error:', error);
+                window.Sovereign.showNotification('Failed to send campaign', 'error');
+            }
+        },
+        
+        updateDraftMeta(text) {
+            const words = text.trim().split(/\s+/).length;
+            const chars = text.length;
+            
+            document.getElementById('word-count').textContent = words;
+            document.getElementById('char-count').textContent = chars;
+        }
+    };
+    
+    // Initialize on load
+    GhostPlugin.init();
+    
+    // Export to global
+    window.GhostPlugin = GhostPlugin;
+})();
+</script>
+
+<style>
+/* Campaign button active state */
+.campaign-btn.active {
+    background-color: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Tone option styles */
+.tone-option input[type="radio"] {
+    accent-color: var(--accent);
+}
+
+/* Draft textarea full height */
+#draft-textarea {
+    min-height: 600px;
+}
+
+/* Smooth transitions */
+.campaign-btn,
+.tone-option,
+button {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Typewriter cursor effect (optional) */
+#typewriter-content::after {
+    content: '|';
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+</style>
