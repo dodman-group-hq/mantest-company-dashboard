@@ -21,7 +21,7 @@ from typing import Optional
 import logging
 
 # Import route modules
-from .routes import auth, plugins, plugin_dashboards, settings
+from routes import auth, plugins, plugin_dashboards, settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
