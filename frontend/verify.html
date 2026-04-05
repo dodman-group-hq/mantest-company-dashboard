@@ -156,119 +156,94 @@
         <!-- Action Buttons (hidden by default) -->
         <div id="actions" style="display: none;">
             <a href="/" class="btn">Go to Dashboard</a>
-            <a href="https://dodman.ai/login" class="btn btn-secondary">Back to Login</a>
+            <a href="https://ai.dodman.group/login" class="btn btn-secondary">Back to Login</a>
         </div>
     </div>
 
     <script>
-        // Configuration
-        const API_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000/api'
-            : '/api';
+        // ── Token storage ────────────────────────────────────────────────────
+        const SESSION_KEY = 'dodman_session_token';
+        const REFRESH_KEY = 'dodman_refresh_token';
+        const TENANT_KEY  = 'dodman_tenant_id';
 
-        // Extract token from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        // ── This page serves as /auth/callback ───────────────────────────────
+        // dodman-core redirects here after magic link verification with tokens
+        // in the query string. We store them and redirect to the dashboard.
+        function handleCallback() {
+            const params        = new URLSearchParams(window.location.search);
+            const sessionToken  = params.get('session_token');
+            const refreshToken  = params.get('refresh_token');
+            const tenantId      = params.get('tenant_id');
+            const subdomain     = params.get('subdomain');
 
-        // Verify token on page load
-        async function verifyMagicLink() {
-            // Check if token exists
-            if (!token) {
-                showError('No verification token found in URL. Please request a new magic link.');
+            if (!sessionToken || !refreshToken) {
+                showError('No session tokens received. Please request a new magic link.');
                 return;
             }
 
+            // Store tokens in sessionStorage
+            sessionStorage.setItem(SESSION_KEY, sessionToken);
+            sessionStorage.setItem(REFRESH_KEY, refreshToken);
+            if (tenantId)   sessionStorage.setItem(TENANT_KEY, tenantId);
+            if (subdomain)  sessionStorage.setItem('dodman_subdomain', subdomain);
+
+            // Decode token to get user info for welcome message
+            let userName = 'there';
             try {
-                // Call verify endpoint
-                const response = await fetch(`${API_URL}/auth/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include', // Important: Include cookies
-                    body: JSON.stringify({ token })
-                });
+                const base64  = sessionToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                const payload = JSON.parse(atob(base64));
+                userName = payload.email ? payload.email.split('@')[0] : 'there';
+            } catch (e) { /* ignore decode errors */ }
 
-                const data = await response.json();
+            // Strip tokens from URL so they don't appear in browser history
+            window.history.replaceState({}, document.title, '/auth/callback');
 
-                if (!response.ok) {
-                    // Handle error
-                    if (response.status === 401) {
-                        showError('This magic link has expired or is invalid. Please request a new one.');
-                    } else {
-                        showError(data.detail || 'Verification failed. Please try again.');
-                    }
-                    return;
-                }
-
-                // Success!
-                showSuccess(data);
-
-            } catch (error) {
-                console.error('Verification error:', error);
-                showError('Network error. Please check your connection and try again.');
-            }
+            // Show success and redirect
+            showSuccess({ user: { name: userName } });
         }
 
-        // Show success and redirect
+        // Show success and redirect to dashboard home
         function showSuccess(data) {
-            // Hide spinner
             document.getElementById('spinner').style.display = 'none';
-
-            // Update title
             document.getElementById('title').textContent = '✓ Login Successful!';
+            document.getElementById('statusText').textContent =
+                `Welcome back, ${data.user.name || 'there'}!`;
 
-            // Update status
-            document.getElementById('statusText').textContent = 
-                `Welcome back, ${data.user.name || data.user.email}!`;
-
-            // Show success message
             const successMsg = document.getElementById('successMessage');
             successMsg.textContent = 'Your session has been created. Redirecting to dashboard...';
             successMsg.classList.add('show');
 
-            // Show redirect countdown
             const redirectInfo = document.getElementById('redirectInfo');
             redirectInfo.classList.add('show');
 
-            // Countdown and redirect
             let countdown = 3;
             const countdownEl = document.getElementById('countdown');
-            
+
             const timer = setInterval(() => {
                 countdown--;
                 countdownEl.textContent = countdown;
-                
                 if (countdown === 0) {
                     clearInterval(timer);
-                    // Redirect to dashboard home
-                    window.location.href = '/';
+                    window.location.replace('/');
                 }
             }, 1000);
         }
 
-        // Show error
+        // Show error state
         function showError(message) {
-            // Hide spinner
             document.getElementById('spinner').style.display = 'none';
-
-            // Update title
             document.getElementById('title').textContent = 'Verification Failed';
-
-            // Hide status text
             document.getElementById('statusText').style.display = 'none';
 
-            // Show error message
             const errorMsg = document.getElementById('errorMessage');
             errorMsg.textContent = message;
             errorMsg.classList.add('show');
 
-            // Show action buttons
             document.getElementById('actions').style.display = 'block';
         }
 
-        // Run verification on page load
-        verifyMagicLink();
+        // Run on page load
+        handleCallback();
     </script>
 </body>
 </html>
