@@ -114,9 +114,19 @@ const AUTH = (() => {
     function _patchFetch(token) {
         const _origFetch = window.fetch;
         window.fetch = function (url, options = {}) {
-            if (typeof url === 'string' && url.includes('dodman-core.onrender.com')) {
-                options = { ...options };
-                options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+            if (typeof url === 'string') {
+                // Attach token to:
+                // 1. Direct dodman-core calls (from plugin JS)
+                // 2. Local /api/ calls (proxied through the dashboard backend)
+                const isDodmanCore = url.includes('dodman-core.onrender.com');
+                const isLocalApi   = url.startsWith('/api/') || url.startsWith('api/');
+                if (isDodmanCore || isLocalApi) {
+                    options = { ...options };
+                    options.headers = {
+                        ...options.headers,
+                        'Authorization': `Bearer ${token}`,
+                    };
+                }
             }
             return _origFetch(url, options);
         };

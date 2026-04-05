@@ -185,21 +185,26 @@ async def proxy_to_core_api(
     try:
         # Get request body
         body = await request.body()
-        
-        # Build headers
-        headers = {}
-        if authorization:
-            headers["Authorization"] = authorization
-        
-        # Copy content-type if present
-        if request.headers.get("content-type"):
-            headers["Content-Type"] = request.headers.get("content-type")
-        
+
+        # Forward all safe headers from the original request.
+        # Critically this includes Authorization — without forwarding it
+        # dodman-core rejects every proxied request with 401.
+        # We skip hop-by-hop headers that must not be forwarded.
+        HOP_BY_HOP = {
+            'host', 'connection', 'keep-alive', 'transfer-encoding',
+            'te', 'trailer', 'upgrade', 'proxy-authorization',
+            'proxy-authenticate',
+        }
+        headers = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in HOP_BY_HOP
+        }
+
         # Build full URL to dodman-core API
         target_url = f"{DODMAN_CORE_API_URL}/api/{path}"
-        
+
         logger.info(f"Proxying {request.method} {path} -> {target_url}")
-        
+
         # Make request to dodman-core API
         async with httpx.AsyncClient() as client:
             response = await client.request(
