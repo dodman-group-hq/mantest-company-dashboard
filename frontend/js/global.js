@@ -428,31 +428,51 @@ function validateForm(formElement) {
  * - /dashboard (uses default tenant from localStorage)
  */
 function getTenantId() {
-    // Try to get from URL first
+    // 1. Check in-memory state first (fastest)
+    if (SovereignApp.currentTenantId) {
+        return SovereignApp.currentTenantId;
+    }
+
+    // 2. Read from sessionStorage — this is where auth.js stores the tenant_id
+    //    after the magic link callback. Always check here before falling back.
+    const sessionTenant = sessionStorage.getItem('dodman_tenant_id');
+    if (sessionTenant) {
+        SovereignApp.currentTenantId = sessionTenant;
+        return sessionTenant;
+    }
+
+    // 3. Try to decode it from the session token if tenant_id key is missing
+    const sessionToken = sessionStorage.getItem('dodman_session_token');
+    if (sessionToken) {
+        try {
+            const base64 = sessionToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(atob(base64));
+            if (payload.tenant_id) {
+                SovereignApp.currentTenantId = payload.tenant_id;
+                sessionStorage.setItem('dodman_tenant_id', payload.tenant_id);
+                return payload.tenant_id;
+            }
+        } catch (e) { /* ignore decode errors */ }
+    }
+
+    // 4. Try to get from URL path (e.g. /tenants/acme_corp/dashboard)
     const pathParts = window.location.pathname.split('/').filter(p => p);
     const tenantIndex = pathParts.indexOf('tenants');
-    
     if (tenantIndex !== -1 && pathParts[tenantIndex + 1]) {
         const tenantId = pathParts[tenantIndex + 1];
         SovereignApp.currentTenantId = tenantId;
         return tenantId;
     }
-    
-    // Fallback to stored tenant
-    if (SovereignApp.currentTenantId) {
-        return SovereignApp.currentTenantId;
-    }
-    
-    // Fallback to localStorage
+
+    // 5. Last resort — localStorage (legacy fallback)
     const storedTenant = loadFromLocalStorage('current_tenant_id');
     if (storedTenant) {
         SovereignApp.currentTenantId = storedTenant;
         return storedTenant;
     }
-    
-    // Default fallback
-    console.warn('No tenant ID found, using default');
-    return 'default_tenant';
+
+    console.warn('No tenant ID found — auth.js may not have run yet');
+    return null;
 }
 
 /**
@@ -471,14 +491,18 @@ function setTenantId(tenantId) {
  * Get authentication token from localStorage
  */
 function getAuthToken() {
-    return loadFromLocalStorage('auth_token') || '';
+    // auth.js stores the token in sessionStorage under 'dodman_session_token'
+    return sessionStorage.getItem('dodman_session_token')
+        || loadFromLocalStorage('auth_token')  // legacy fallback
+        || '';
 }
 
 /**
  * Set authentication token
  */
 function setAuthToken(token) {
-    saveToLocalStorage('auth_token', token);
+    // Store in sessionStorage to stay consistent with auth.js
+    sessionStorage.setItem('dodman_session_token', token);
 }
 
 /**
@@ -486,16 +510,32 @@ function setAuthToken(token) {
  */
 function isAuthenticated() {
     const token = getAuthToken();
-    return token && token.length > 0;
+    if (!token) return false;
+    // Also verify token is not expired
+    try {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
+        return payload.exp ? (payload.exp * 1000) > Date.now() : true;
+    } catch {
+        return token.length > 0;
+    }
 }
 
 /**
  * Logout user
  */
 function logout() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('current_tenant_id');
-    window.location.href = '/login';
+    // Delegate to AUTH.logout() from auth.js which calls the dodman-core
+    // logout API and redirects to ai.dodman.group/login.html.
+    // If auth.js hasn't loaded yet, fall back to a direct redirect.
+    if (window.AUTH && typeof window.AUTH.logout === 'function') {
+        window.AUTH.logout();
+    } else {
+        sessionStorage.clear();
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('current_tenant_id');
+        window.location.href = 'https://ai.dodman.group/login.html';
+    }
 }
 
 // ============================================================
@@ -530,7 +570,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
         // Handle 401 unauthorized
         if (response.status === 401) {
             showNotification('Session expired. Please login again.', 'error');
-            setTimeout(() => logout(), 2000);
+            setTimeout(() => logout(), 2000); // delegates to AUTH.logout()
             throw new Error('Unauthorized');
         }
         
@@ -597,9 +637,14 @@ function getFromLocalStorage(key, defaultValue = null) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Sovereign Dashboard initialized');
     
-    // Initialize tenant context
+    // Initialize tenant context from sessionStorage (set by auth.js)
     const tenantId = getTenantId();
-    console.log('Current tenant:', tenantId);
+    if (tenantId) {
+        SovereignApp.currentTenantId = tenantId;
+        console.log('Current tenant:', tenantId);
+    } else {
+        console.warn('Tenant ID not yet available — auth.js may still be initialising');
+    }
     
     // Update initial breadcrumb
     updateBreadcrumb(window.location.pathname);
