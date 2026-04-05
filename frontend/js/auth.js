@@ -156,6 +156,10 @@ const AUTH = (() => {
         document.querySelectorAll('a[href="/logout"], [data-action="logout"]').forEach(el => {
             el.addEventListener('click', (e) => { e.preventDefault(); logout(); });
         });
+
+        // Signal to HTMX event handlers that auth is complete and
+        // fetch is patched — plugin scripts can now safely call apiRequest()
+        window._authReady = true;
     }
 
     return { requireAuth, logout, getSessionToken, decodeJWT };

@@ -12,7 +12,7 @@
                    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; 
                    font-src 'self' https://fonts.gstatic.com;
                    img-src 'self' data: https:;
-                   connect-src 'self' /api/* https://dodman-core.onrender.com;">
+                   connect-src 'self' https://dodman-core.onrender.com;">
     
     <title>Sovereign Dashboard | {{CLIENT_NAME}}</title>
     
@@ -367,24 +367,47 @@
     
     <!-- HTMX Event Handlers -->
     <script>
-        // Handle HTMX events
+        // ── CSP-safe script executor ──────────────────────────────────────────
+        // eval() is blocked by the CSP. Instead we create a new <script> element
+        // and append it to the document — the browser executes it natively
+        // without needing 'unsafe-eval'.
+        function executeInlineScript(scriptContent) {
+            const el = document.createElement('script');
+            el.textContent = scriptContent;
+            document.body.appendChild(el);
+            // Remove immediately after execution to keep DOM clean
+            document.body.removeChild(el);
+        }
+
+        // Handle HTMX content load events
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {
             console.log('Content loaded into:', evt.detail.target);
-            
-            // Execute any plugin-specific JS if present
-            const pluginScripts = evt.detail.target.querySelectorAll('script');
-            pluginScripts.forEach(script => {
-                if (script.src) {
-                    // External script
-                    const newScript = document.createElement('script');
-                    newScript.src = script.src;
-                    document.body.appendChild(newScript);
-                } else {
-                    // Inline script
-                    eval(script.textContent);
-                }
-            });
-            
+
+            // Wait for auth.js requireAuth() to finish before running plugin
+            // scripts — plugin init() calls apiRequest() which needs the fetch
+            // patch and valid session token that requireAuth() sets up.
+            const runPluginScripts = () => {
+                const pluginScripts = evt.detail.target.querySelectorAll('script');
+                pluginScripts.forEach(script => {
+                    if (script.src) {
+                        const newScript = document.createElement('script');
+                        newScript.src = script.src;
+                        document.body.appendChild(newScript);
+                    } else {
+                        // CSP-safe inline script execution (no eval)
+                        executeInlineScript(script.textContent);
+                    }
+                });
+            };
+
+            // If AUTH is already initialised (fetch is patched), run immediately.
+            // Otherwise wait 100ms for the async requireAuth() to complete.
+            if (window._authReady) {
+                runPluginScripts();
+            } else {
+                setTimeout(runPluginScripts, 150);
+            }
+
             // Update breadcrumb
             updateBreadcrumb(evt.detail.pathInfo.requestPath);
         });
