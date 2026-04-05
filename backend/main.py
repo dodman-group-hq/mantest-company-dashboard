@@ -37,7 +37,7 @@ app = FastAPI(
 )
 
 # Configuration
-DODMAN_CORE_API_URL = os.getenv("DODMAN_CORE_API_URL", "http://localhost:8080")
+DODMAN_CORE_API_URL = os.getenv("DODMAN_CORE_API_URL", "https://dodman-core.onrender.com")
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 # ============================================================================
@@ -61,9 +61,13 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # ============================================================================
 
 # Serve static files (CSS, JS, images)
-app.mount("/css", StaticFiles(directory=FRONTEND_DIR / "css"), name="css")
-app.mount("/js", StaticFiles(directory=FRONTEND_DIR / "js"), name="js")
-app.mount("/admin", StaticFiles(directory=FRONTEND_DIR / "admin"), name="admin")
+app.mount("/css",          StaticFiles(directory=FRONTEND_DIR / "css"),    name="css")
+app.mount("/js",           StaticFiles(directory=FRONTEND_DIR / "js"),     name="js")
+# /frontend/js mirrors /js — index.html references /frontend/js/auth.js
+app.mount("/frontend/js",  StaticFiles(directory=FRONTEND_DIR / "js"),     name="frontend_js")
+app.mount("/frontend/css", StaticFiles(directory=FRONTEND_DIR / "css"),    name="frontend_css")
+app.mount("/assets",       StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+app.mount("/admin",        StaticFiles(directory=FRONTEND_DIR / "admin"),  name="admin")
 
 # ============================================================================
 # ROUTE REGISTRATION
@@ -112,6 +116,35 @@ async def serve_verify():
         raise HTTPException(status_code=404, detail="Verify page not found")
     
     return FileResponse(verify_file)
+
+
+@app.get("/auth/callback", response_class=HTMLResponse)
+async def serve_auth_callback():
+    """
+    Receive the post-magic-link redirect from dodman-core.
+
+    dodman-core redirects here after verifying the magic link:
+        /auth/callback?session_token=...&refresh_token=...&tenant_id=...
+
+    verify.html picks up the tokens from the URL, stores them in
+    sessionStorage, strips them from the URL, then redirects to /.
+    """
+    verify_file = FRONTEND_DIR / "verify.html"
+    if not verify_file.exists():
+        raise HTTPException(status_code=404, detail="Verify page not found")
+    return FileResponse(verify_file)
+
+
+@app.get("/logout", response_class=HTMLResponse)
+async def serve_logout():
+    """
+    Logout route — auth.js intercepts this client-side and calls the
+    dodman-core logout API, then clears sessionStorage and redirects
+    to the login page. This server route is a fallback for direct navigation.
+    """
+    # Redirect to login page directly
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="https://ai.dodman.group/login.html", status_code=302)
 
 
 @app.get("/health")

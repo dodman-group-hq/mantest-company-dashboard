@@ -12,7 +12,7 @@
                    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; 
                    font-src 'self' https://fonts.gstatic.com;
                    img-src 'self' data: https:;
-                   connect-src 'self' /api/*;">
+                   connect-src 'self' /api/* https://dodman-core.onrender.com;">
     
     <title>Sovereign Dashboard | {{CLIENT_NAME}}</title>
     
@@ -47,6 +47,8 @@
             }
         }
     </script>
+
+    <script src="/frontend/js/auth.js"></script>
 </head>
 <body class="antialiased">
     
