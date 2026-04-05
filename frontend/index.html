@@ -393,6 +393,46 @@
             console.error('HTMX Error:', evt.detail);
             showNotification('Error loading content. Please try again.', 'error');
         });
+
+        // ── Restore content on browser refresh ───────────────────────────────
+        // When the user refreshes on /plugins/sniper, the server returns
+        // index.html (catch-all route). This script detects the current path
+        // and triggers the matching HTMX request so the correct plugin content
+        // loads into #main-content — exactly as if the nav link was clicked.
+        document.addEventListener('DOMContentLoaded', function () {
+            const path = window.location.pathname;
+            if (path === '/' || path === '') return; // default content already shown
+
+            // Map URL paths to their HTMX API endpoints
+            const routeMap = {
+                '/plugins/sniper':    '/api/plugins/sniper/dashboard',
+                '/plugins/shadow':    '/api/plugins/shadow/dashboard',
+                '/plugins/ghost':     '/api/plugins/ghost/dashboard',
+                '/settings/icp':      '/api/settings/icp',
+                '/settings/plugins':  '/api/settings/plugins',
+                '/settings/api':      '/api/settings/api',
+            };
+
+            // Exact match first
+            let apiPath = routeMap[path];
+
+            // Prefix match for dynamic sub-paths (e.g. /plugins/sniper/leads)
+            if (!apiPath) {
+                for (const [route, api] of Object.entries(routeMap)) {
+                    if (path.startsWith(route)) {
+                        apiPath = api;
+                        break;
+                    }
+                }
+            }
+
+            if (apiPath) {
+                // Trigger HTMX programmatically to load the right content
+                htmx.ajax('GET', apiPath, { target: '#main-content', swap: 'innerHTML' });
+                updateBreadcrumb(path);
+                updateActiveNavLink(path);
+            }
+        });
     </script>
     
 </body>
