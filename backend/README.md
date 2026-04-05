@@ -53,6 +53,8 @@ uvicorn main:app --reload --port 3000
 
 # Production
 gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:3000
+gunicorn backend main:app --bind 0.0.0.0:$PORT -k uvicorn.workers.UvicornWorker
+
 ```
 
 ### 4. Access Dashboard

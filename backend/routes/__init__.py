@@ -2,6 +2,6 @@
 Routes module for master dashboard backend
 """
 
-from . import auth, plugins
+from . import auth, plugins, plugin_dashboards, settings
 
-__all__ = ['auth', 'plugins']
+__all__ = ['auth', 'plugins', 'plugin_dashboards', 'settings']
