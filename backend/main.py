@@ -352,21 +352,27 @@ async def serve_plugin_sandbox(plugin_id: str):
 
 
 # ============================================================================
+# CATCH-ALL — serve index.html for all unrecognised frontend routes
+# ============================================================================
+# Without this, refreshing on /plugins/sniper returns a 404 because FastAPI
+# has no explicit route for it. With this, the server returns index.html,
+# auth.js re-authenticates from sessionStorage, and HTMX re-fetches the
+# correct plugin content. Must be registered AFTER all other routes.
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def spa_catch_all(full_path: str, request: Request):
+    """Serve index.html for all frontend routes so browser refresh works."""
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    index_file = FRONTEND_DIR / "index.html"
+    if not index_file.exists():
+        raise HTTPException(status_code=404, detail="Index file not found")
+    return FileResponse(index_file)
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
-
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc: HTTPException):
-    """Custom 404 handler"""
-    return JSONResponse(
-        status_code=404,
-        content={
-            "error": "Not Found",
-            "message": "The requested resource was not found",
-            "path": request.url.path
-        }
-    )
-
 
 @app.exception_handler(500)
 async def internal_error_handler(request: Request, exc: Exception):
