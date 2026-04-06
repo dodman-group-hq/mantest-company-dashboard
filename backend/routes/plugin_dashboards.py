@@ -6,7 +6,7 @@ Separate from API proxy routes in plugins.py
 """
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pathlib import Path
 
 # Create router
@@ -42,7 +42,11 @@ async def sniper_dashboard():
             detail=f"Sniper plugin not found at {plugin_file}"
         )
     
-    return FileResponse(plugin_file, media_type="text/html")
+    return FileResponse(
+        plugin_file,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 
 @router.get("/shadow/dashboard")
@@ -66,7 +70,11 @@ async def shadow_dashboard():
             detail=f"Shadow plugin not found at {plugin_file}"
         )
     
-    return FileResponse(plugin_file, media_type="text/html")
+    return FileResponse(
+        plugin_file,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 
 @router.get("/ghost/dashboard")
@@ -90,7 +98,11 @@ async def ghost_dashboard():
             detail=f"Ghost plugin not found at {plugin_file}"
         )
     
-    return FileResponse(plugin_file, media_type="text/html")
+    return FileResponse(
+        plugin_file,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 
 # ============================================================================
