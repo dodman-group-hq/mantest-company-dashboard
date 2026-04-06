@@ -205,6 +205,13 @@ async def proxy_to_core_api(
 
         logger.info(f"Proxying {request.method} {path} -> {target_url}")
 
+        # Tell dodman-core not to compress its response — the GZipMiddleware
+        # on this server will handle compression for the browser. Without this,
+        # httpx decompresses the gzip body but the original Content-Encoding
+        # header is still forwarded, causing the browser to try to decompress
+        # already-plain data and get garbage bytes.
+        headers["accept-encoding"] = "identity"
+
         # Make request to dodman-core API
         async with httpx.AsyncClient() as client:
             response = await client.request(
@@ -216,25 +223,11 @@ async def proxy_to_core_api(
                 timeout=30.0
             )
         
-        # Strip headers that must not be forwarded as-is.
-        # content-length is dropped because GZipMiddleware will compress the
-        # body and set a new (different) length — forwarding the original
-        # value causes a 'Response content longer than Content-Length' crash.
-        # content-encoding is dropped for the same reason.
-        STRIP_HEADERS = {
-            'content-length', 'content-encoding', 'transfer-encoding',
-            'connection', 'keep-alive',
-        }
-        proxy_headers = {
-            k: v for k, v in response.headers.items()
-            if k.lower() not in STRIP_HEADERS
-        }
-
         # Return response
         return Response(
             content=response.content,
             status_code=response.status_code,
-            headers=proxy_headers,
+            headers=dict(response.headers),
             media_type=response.headers.get("content-type")
         )
     
