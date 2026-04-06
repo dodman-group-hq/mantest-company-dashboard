@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 import httpx
 import os
+import asyncio
 from pathlib import Path
 from typing import Optional
 import logging
@@ -308,25 +309,137 @@ async def get_plugin_details(plugin_id: str):
 # DASHBOARD DATA
 # ============================================================================
 
-@app.get("/api/dashboard/overview")
-async def get_dashboard_overview(authorization: Optional[str] = Header(None)):
+@app.get("/api/dashboard/overview", response_class=HTMLResponse)
+async def get_dashboard_overview(request: Request, authorization: Optional[str] = Header(None)):
     """
-    Get dashboard overview data.
-    
-    Returns:
-        Overview metrics, recent activity, alerts
+    Get dashboard overview as an HTML fragment for HTMX.
+    Fetches real data from dodman-core and renders the stats cards.
     """
-    # TODO: Proxy to dodman-core /api/tenants/overview
-    return {
-        "metrics": {
-            "total_leads": 0,
-            "active_plugins": 0,
-            "api_usage": 0,
-            "credit_remaining": 1000
-        },
-        "recent_activity": [],
-        "alerts": []
-    }
+    # Extract tenant_id from the JWT in the Authorization header
+    tenant_id = None
+    total_leads = 0
+    api_usage = "$0.00"
+    active_plugins = 0
+
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            import base64, json as _json
+            token = authorization.split(" ", 1)[1]
+            payload_b64 = token.split(".")[1]
+            # Fix padding
+            payload_b64 += "=" * (4 - len(payload_b64) % 4)
+            payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
+            tenant_id = payload.get("tenant_id")
+        except Exception:
+            pass
+
+    if tenant_id:
+        try:
+            async with httpx.AsyncClient() as client:
+                # Fetch leads count
+                leads_resp = await client.get(
+                    f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/plugins/sniper/leads",
+                    headers={"Authorization": authorization},
+                    params={"limit": 1000, "min_score": 0},
+                    timeout=10.0
+                )
+                if leads_resp.status_code == 200:
+                    leads_data = leads_resp.json()
+                    total_leads = leads_data.get("total", 0)
+
+                # Fetch tenant info for API usage
+                tenant_resp = await client.get(
+                    f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}",
+                    headers={"Authorization": authorization},
+                    timeout=10.0
+                )
+                if tenant_resp.status_code == 200:
+                    tenant_data = tenant_resp.json()
+                    cost = tenant_data.get("api_usage_cost", 0)
+                    api_usage = f"${float(cost):.2f}"
+
+                # Check plugin statuses
+                plugin_count = 0
+                for plugin in ["sniper", "shadow", "ghost"]:
+                    status_resp = await client.get(
+                        f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/plugins/{plugin}/status",
+                        headers={"Authorization": authorization},
+                        timeout=5.0
+                    )
+                    if status_resp.status_code == 200:
+                        pdata = status_resp.json()
+                        if pdata.get("status") not in ("not_installed", "error"):
+                            plugin_count += 1
+                active_plugins = plugin_count
+        except Exception as e:
+            logger.warning(f"Failed to fetch overview data: {e}")
+
+    html = f"""
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-sm text-[var(--text-secondary)]">Leads Found</p>
+                <svg class="w-5 h-5 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+            </div>
+            <p class="text-3xl font-bold text-[var(--text-main)]">{total_leads}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">Total in vault</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-sm text-[var(--text-secondary)]">Active Plugins</p>
+                <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <p class="text-3xl font-bold text-[var(--text-main)]">{active_plugins}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">Sniper, Shadow, Ghost</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-sm text-[var(--text-secondary)]">API Usage</p>
+                <svg class="w-5 h-5 text-[var(--info)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <p class="text-3xl font-bold text-[var(--text-main)]">{api_usage}</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">Today</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-sm text-[var(--text-secondary)]">Core Health</p>
+                <div class="w-2 h-2 bg-[var(--success)] rounded-full animate-pulse"></div>
+            </div>
+            <p class="text-3xl font-bold text-[var(--text-main)]">100%</p>
+            <p class="text-xs text-[var(--text-muted)] mt-1">All systems operational</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+        <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onclick="window.location.href='/plugins/sniper'" class="flex items-center justify-center px-6 py-4 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                Run Scour
+            </button>
+            <button onclick="window.location.href='/plugins/shadow'" class="flex items-center justify-center px-6 py-4 bg-white border-2 border-[var(--accent)] text-[var(--accent)] rounded-lg hover:bg-[var(--accent-light)] transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                Add Competitor
+            </button>
+            <button onclick="window.location.href='/plugins/ghost'" class="flex items-center justify-center px-6 py-4 bg-white border border-[var(--border-color)] text-[var(--text-main)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                View Reports
+            </button>
+        </div>
+    </div>
+    """
+    return HTMLResponse(content=html)
 
 
 # ============================================================================
@@ -395,6 +508,15 @@ async def internal_error_handler(request: Request, exc: Exception):
 # ============================================================================
 # STARTUP/SHUTDOWN
 # ============================================================================
+async def keep_core_awake():
+    while True:
+        await asyncio.sleep(600)  # every 10 minutes
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(f"{DODMAN_CORE_API_URL}/api/health", timeout=10.0)
+                logger.info("Core API keepalive ping sent")
+        except Exception:
+            pass
 
 @app.on_event("startup")
 async def startup_event():
@@ -423,6 +545,8 @@ async def startup_event():
                 logger.warning(f"⚠ Core API returned {response.status_code}")
     except Exception as e:
         logger.warning(f"⚠ Core API not reachable: {e}")
+
+    asyncio.create_task(keep_core_awake())
 
 
 @app.on_event("shutdown")
