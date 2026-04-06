@@ -285,8 +285,7 @@
                 <td class="px-4 py-3 text-sm text-[var(--text-main)] font-medium">
                     ${lead.url
                         ? `<a href="${lead.url}" target="_blank" rel="noopener"
-                               class="hover:text-[var(--accent)] hover:underline"
-                               title="${lead.title.replace(/"/g, '&quot;')}">${lead.company}</a>`
+                               class="hover:text-[var(--accent)] hover:underline">${lead.company}</a>`
                         : lead.company}
                     ${lead.title ? `<p class="text-xs text-[var(--text-muted)] mt-0.5 truncate max-w-xs">${lead.title.slice(0, 60)}${lead.title.length > 60 ? '…' : ''}</p>` : ''}
                 </td>
@@ -319,20 +318,16 @@
                 
                 if (result.success) {
                     this.leads = result.leads.map((lead, idx) => {
-                        // Surface leads nest data under lead_data.raw_data
                         const ld = lead.lead_data || lead;
                         const raw = ld.raw_data || {};
-                        // Company: identity (enriched) > news_source > URL hostname > Unknown
                         let company = lead.identity?.name || ld.identity?.name
                             || raw.news_source || raw.company;
                         if (!company && raw.url) {
                             try { company = new URL(raw.url).hostname.replace('www.', ''); } catch {}
                         }
                         company = company || 'Unknown';
-                        // Signal: signal_type > keyword > source
                         const signal = (ld.signal_type || lead.signal_type || ld.keyword || ld.source || 'signal')
                             .replace(/_/g, ' ');
-                        // Score: explicit > sentiment * 100 > 0
                         const score = lead.score ?? ld.score
                             ?? (ld.sentiment_score != null ? Math.round(ld.sentiment_score * 100) : 0);
                         return {
@@ -343,6 +338,8 @@
                             source: ld.source || lead.source || 'API',
                             title: raw.title || '',
                             url: raw.url || '',
+                            keyword: ld.keyword || '',
+                            published_at: raw.published_at || '',
                             selected: false,
                             rawData: lead,
                         };
@@ -396,9 +393,18 @@
         sendToGhost() {
             if (this.selectedLeads.length === 0) return;
             
-            // Store selected lead IDs in localStorage for Ghost
+            // Store full lead context for Ghost so it can show company names
             const leadIds = this.selectedLeads.map(l => l.id);
+            const leadContext = this.selectedLeads.map(l => ({
+                id: l.id,
+                company: l.company,
+                signal: l.signal,
+                source: l.source,
+                title: l.title,
+                keyword: l.keyword,
+            }));
             window.Sovereign.saveToLocalStorage('sniper_selected_lead_ids', leadIds);
+            window.Sovereign.saveToLocalStorage('sniper_selected_leads_context', leadContext);
             
             window.Sovereign.showNotification(
                 `Sending ${this.selectedLeads.length} leads to Ghost Writer...`,

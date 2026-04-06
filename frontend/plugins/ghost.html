@@ -213,30 +213,48 @@
         async loadContexts() {
             // Load pinned leads from localStorage
             const leadIds = window.Sovereign.getFromLocalStorage('sniper_selected_lead_ids') || [];
+            // Full lead context saved by Sniper's sendToGhost (includes company name, signal, title)
+            const leadContext = window.Sovereign.getFromLocalStorage('sniper_selected_leads_context') || [];
             
             if (leadIds.length > 0) {
-                // Display lead badges
                 const leadsContainer = document.getElementById('leads-context');
-                leadsContainer.innerHTML = leadIds.map(id => `
-                    <span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded">
-                        Lead: ${id.substring(0, 8)}...
-                    </span>
-                `).join('');
+                leadsContainer.innerHTML = leadIds.map((id, i) => {
+                    const ctx = leadContext[i];
+                    const label = ctx?.company && ctx.company !== 'Unknown'
+                        ? `${ctx.company}${ctx.signal ? ' · ' + ctx.signal : ''}`
+                        : `Lead ${i + 1}`;
+                    const tooltip = ctx?.title ? ` title="${ctx.title.replace(/"/g, '&quot;')}"` : '';
+                    return `<span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded cursor-default"${tooltip}>📌 ${label}</span>`;
+                }).join(' ');
                 
                 this.selectedLeadIds = leadIds;
+                this.leadContext = leadContext;
+
+                // Pre-fill custom context textarea with lead signals
+                const contextInput = document.getElementById('custom-context');
+                if (contextInput && !contextInput.value && leadContext.length > 0) {
+                    const signals = leadContext
+                        .filter(l => l.title)
+                        .map(l => `• ${l.company}: ${l.title.slice(0, 80)}`)
+                        .join('\n');
+                    if (signals) contextInput.value = signals;
+                }
             }
             
             // Load competitor from localStorage
             const competitorId = window.Sovereign.getFromLocalStorage('shadow_selected_competitor_id');
             
             if (competitorId) {
+                // Try to get competitor name from shadow's stored competitors
+                const competitors = window.Sovereign.getFromLocalStorage('shadow_competitors') || [];
+                const comp = competitors.find(c => c.id === competitorId);
+                const compLabel = comp?.name || competitorId.substring(0, 8);
                 const compContainer = document.getElementById('competitor-context');
                 compContainer.innerHTML = `
-                    <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded">
-                        Competitor: ${competitorId.substring(0, 8)}...
+                    <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded cursor-default">
+                        🎯 vs ${compLabel}${comp?.domain ? ' (' + comp.domain + ')' : ''}
                     </span>
                 `;
-                
                 this.selectedCompetitorId = competitorId;
             }
         },
