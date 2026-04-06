@@ -300,6 +300,9 @@
             const watchlist = document.getElementById('watchlist');
             const count = document.getElementById('watch-count');
             
+            // Guard: elements may not exist if this script runs outside the shadow page
+            if (!watchlist || !count) return;
+            
             count.textContent = `${this.competitors.length} tracked`;
             
             if (this.competitors.length === 0) {
