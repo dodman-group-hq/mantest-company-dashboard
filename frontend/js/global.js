@@ -573,6 +573,21 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
             setTimeout(() => logout(), 2000); // delegates to AUTH.logout()
             throw new Error('Unauthorized');
         }
+
+        // Handle 502/503/504 — dodman-core is likely sleeping (Render free tier).
+        // The response body will be an HTML error page, not JSON.
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+            showNotification('Core API is waking up — please try again in a moment.', 'warning');
+            throw new Error(`Service unavailable (${response.status}). Core API may be starting up.`);
+        }
+
+        // Guard against non-JSON responses (e.g. HTML error pages from the proxy).
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', response.status, text.slice(0, 200));
+            throw new Error(`Unexpected response from server (${response.status})`);
+        }
         
         const result = await response.json();
         
@@ -655,6 +670,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Only show welcome if authenticated
     if (isAuthenticated()) {
         showNotification('Welcome to Sovereign!', 'success', 3000);
+    }
+
+    // Keep dodman-core awake on Render free tier (spins down after 15min inactivity).
+    // Ping the health endpoint every 10 minutes so the service stays warm.
+    if (isAuthenticated()) {
+        setInterval(async () => {
+            try {
+                await fetch('/api/health');
+            } catch (e) { /* silent — keepalive is best-effort */ }
+        }, 10 * 60 * 1000); // every 10 minutes
     }
 });
 
