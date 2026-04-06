@@ -282,7 +282,14 @@
             const scoreColor = lead.score >= 90 ? 'success' : lead.score >= 75 ? 'warning' : 'info';
             
             row.innerHTML = `
-                <td class="px-4 py-3 text-sm text-[var(--text-main)] font-medium">${lead.company}</td>
+                <td class="px-4 py-3 text-sm text-[var(--text-main)] font-medium">
+                    ${lead.url
+                        ? `<a href="${lead.url}" target="_blank" rel="noopener"
+                               class="hover:text-[var(--accent)] hover:underline"
+                               title="${lead.title.replace(/"/g, '&quot;')}">${lead.company}</a>`
+                        : lead.company}
+                    ${lead.title ? `<p class="text-xs text-[var(--text-muted)] mt-0.5 truncate max-w-xs">${lead.title.slice(0, 60)}${lead.title.length > 60 ? '…' : ''}</p>` : ''}
+                </td>
                 <td class="px-4 py-3 text-sm">
                     <span class="px-2 py-1 text-xs font-medium bg-[var(--accent-light)] text-[var(--accent)] rounded">${lead.signal}</span>
                 </td>
@@ -311,15 +318,35 @@
                 );
                 
                 if (result.success) {
-                    this.leads = result.leads.map(lead => ({
-                        id: lead.prospect_id,
-                        company: lead.identity?.name || 'Unknown',
-                        signal: lead.signal_type?.replace('_', ' ') || 'Unknown',
-                        score: lead.score || 0,
-                        source: lead.source || 'API',
-                        selected: false,
-                        rawData: lead // Store full lead data
-                    }));
+                    this.leads = result.leads.map((lead, idx) => {
+                        // Surface leads nest data under lead_data.raw_data
+                        const ld = lead.lead_data || lead;
+                        const raw = ld.raw_data || {};
+                        // Company: identity (enriched) > news_source > URL hostname > Unknown
+                        let company = lead.identity?.name || ld.identity?.name
+                            || raw.news_source || raw.company;
+                        if (!company && raw.url) {
+                            try { company = new URL(raw.url).hostname.replace('www.', ''); } catch {}
+                        }
+                        company = company || 'Unknown';
+                        // Signal: signal_type > keyword > source
+                        const signal = (ld.signal_type || lead.signal_type || ld.keyword || ld.source || 'signal')
+                            .replace(/_/g, ' ');
+                        // Score: explicit > sentiment * 100 > 0
+                        const score = lead.score ?? ld.score
+                            ?? (ld.sentiment_score != null ? Math.round(ld.sentiment_score * 100) : 0);
+                        return {
+                            id: lead.prospect_id || lead.storage_id || `lead_${idx}`,
+                            company,
+                            signal,
+                            score,
+                            source: ld.source || lead.source || 'API',
+                            title: raw.title || '',
+                            url: raw.url || '',
+                            selected: false,
+                            rawData: lead,
+                        };
+                    });
                     
                     // Clear table
                     const tbody = document.getElementById('targets-body');
