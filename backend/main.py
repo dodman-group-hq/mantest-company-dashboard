@@ -10,7 +10,7 @@ Architecture:
 """
 
 from fastapi import FastAPI, Request, HTTPException, status, Header, Response
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -144,7 +144,6 @@ async def serve_logout():
     to the login page. This server route is a fallback for direct navigation.
     """
     # Redirect to login page directly
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="https://ai.dodman.group/login.html", status_code=302)
 
 
@@ -217,11 +216,25 @@ async def proxy_to_core_api(
                 timeout=30.0
             )
         
+        # Strip headers that must not be forwarded as-is.
+        # content-length is dropped because GZipMiddleware will compress the
+        # body and set a new (different) length — forwarding the original
+        # value causes a 'Response content longer than Content-Length' crash.
+        # content-encoding is dropped for the same reason.
+        STRIP_HEADERS = {
+            'content-length', 'content-encoding', 'transfer-encoding',
+            'connection', 'keep-alive',
+        }
+        proxy_headers = {
+            k: v for k, v in response.headers.items()
+            if k.lower() not in STRIP_HEADERS
+        }
+
         # Return response
         return Response(
             content=response.content,
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers=proxy_headers,
             media_type=response.headers.get("content-type")
         )
     
