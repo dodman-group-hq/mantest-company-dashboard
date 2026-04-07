@@ -394,9 +394,13 @@
             if (this.selectedLeads.length === 0) return;
             
             // Store full lead context for Ghost so it can show company names
-            const leadIds = this.selectedLeads.map(l => l.id);
+            // Also pass the real vault prospect_id so Ghost can look up the
+            // full enriched lead record instead of relying on the display id.
+            const leadIds = this.selectedLeads.map(l =>
+                l.rawData?.prospect_id || l.rawData?.lead_data?.prospect_id || l.id
+            );
             const leadContext = this.selectedLeads.map(l => ({
-                id: l.id,
+                id: l.rawData?.prospect_id || l.rawData?.lead_data?.prospect_id || l.id,
                 company: l.company,
                 signal: l.signal,
                 source: l.source,
