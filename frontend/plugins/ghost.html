@@ -206,8 +206,12 @@
         isGenerating: false,
         
         init() {
-            // Load context from localStorage
-            this.loadContexts();
+            // HTMX injects this as a fragment — wait for DOM to settle
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => this.loadContexts());
+            } else {
+                this.loadContexts();
+            }
         },
         
         async loadContexts() {
@@ -330,12 +334,12 @@
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/generate`,
                     'POST',
                     {
-                        campaign_type: campaignType,
-                        tone: tone,
+                        campaign_type: campaignType || 'outreach',
+                        tone: tone || 'consultative', 
                         lead_id: this.leadContext?.[0]?.id || this.selectedLeadIds?.[0] || null,
                         competitor_id: this.selectedCompetitorId || null,
                         custom_context: customContext || null,
-                        manual_trigger: false
+                        manual_trigger: true
                     }
                 );
                 
