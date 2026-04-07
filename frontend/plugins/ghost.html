@@ -211,11 +211,13 @@
         },
         
         async loadContexts() {
-            // Load pinned leads from localStorage
+            const contextInput = document.getElementById('custom-context');
+            let contextParts = [];
+
+            // ── Sniper leads ────────────────────────────────────────────
             const leadIds = window.Sovereign.getFromLocalStorage('sniper_selected_lead_ids') || [];
-            // Full lead context saved by Sniper's sendToGhost (includes company name, signal, title)
             const leadContext = window.Sovereign.getFromLocalStorage('sniper_selected_leads_context') || [];
-            
+
             if (leadIds.length > 0) {
                 const leadsContainer = document.getElementById('leads-context');
                 leadsContainer.innerHTML = leadIds.map((id, i) => {
@@ -226,29 +228,29 @@
                     const tooltip = ctx?.title ? ` title="${ctx.title.replace(/"/g, '&quot;')}"` : '';
                     return `<span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded cursor-default"${tooltip}>📌 ${label}</span>`;
                 }).join(' ');
-                
+
                 this.selectedLeadIds = leadIds;
                 this.leadContext = leadContext;
 
-                // Pre-fill custom context textarea with lead signals
-                const contextInput = document.getElementById('custom-context');
-                if (contextInput && !contextInput.value && leadContext.length > 0) {
-                    const signals = leadContext
-                        .filter(l => l.title)
-                        .map(l => `• ${l.company}: ${l.title.slice(0, 80)}`)
-                        .join('\n');
-                    if (signals) contextInput.value = signals;
-                }
+                // Add lead signals to context
+                const signals = leadContext
+                    .filter(l => l.title)
+                    .map(l => `• ${l.company}: ${l.title.slice(0, 100)}`)
+                    .join('\n');
+                if (signals) contextParts.push('Lead signals:\n' + signals);
             }
-            
-            // Load competitor from localStorage
+
+            // ── Shadow competitor + vulnerabilities ──────────────────────
             const competitorId = window.Sovereign.getFromLocalStorage('shadow_selected_competitor_id');
-            
+            const vulnIntel = window.Sovereign.getFromLocalStorage('shadow_vuln_intel');
+
             if (competitorId) {
-                // Try to get competitor name from shadow's stored competitors
+                // Resolve competitor name from stored competitors or vuln intel
                 const competitors = window.Sovereign.getFromLocalStorage('shadow_competitors') || [];
-                const comp = competitors.find(c => c.id === competitorId);
+                const comp = competitors.find(c => c.id === competitorId) ||
+                    (vulnIntel?.competitor_id === competitorId ? vulnIntel : null);
                 const compLabel = comp?.name || competitorId.substring(0, 8);
+
                 const compContainer = document.getElementById('competitor-context');
                 compContainer.innerHTML = `
                     <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded cursor-default">
@@ -256,6 +258,22 @@
                     </span>
                 `;
                 this.selectedCompetitorId = competitorId;
+
+                // Add vulnerability exploit angles to context
+                if (vulnIntel?.vulnerabilities?.length > 0) {
+                    const angles = vulnIntel.vulnerabilities
+                        .map(v => {
+                            const angle = v.exploit_angle || v.description;
+                            return `• [${v.severity?.toUpperCase() || 'MEDIUM'}] ${v.label}: ${angle}`;
+                        })
+                        .join('\n');
+                    contextParts.push(`Competitor vulnerabilities for ${compLabel}:\n` + angles);
+                }
+            }
+
+            // Pre-fill custom context textarea with all available intelligence
+            if (contextInput && !contextInput.value && contextParts.length > 0) {
+                contextInput.value = contextParts.join('\n\n');
             }
         },
         
