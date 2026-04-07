@@ -308,6 +308,9 @@
         },
         
         async generateDraft() {
+            if (this.isGenerating) return;
+            this.isGenerating = true;
+
             const campaignType = this.campaignType;
             const tone = this.tone;
             const customContext = document.getElementById('custom-context').value;
@@ -356,6 +359,8 @@
                     </div>
                 `;
             } finally {
+                this.isGenerating = false;
+
                 // Re-enable button
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = '✨ Generate Draft';
@@ -582,11 +587,11 @@ ${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a bl
         saveDraft() {
             if (!this.currentDraft) return;
             
-            const drafts = window.Sovereign.loadFromLocalStorage('ghost_drafts', []);
+            const drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
             drafts.push({
                 id: 'draft_' + Date.now(),
                 content: this.currentDraft,
-                campaignType: this.campaignType,
+                campaign_type: this.campaignType,
                 tone: this.tone,
                 createdAt: new Date().toISOString()
             });
@@ -611,6 +616,8 @@ ${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a bl
                     'POST',
                     {
                         draft_id: this.currentDraft.draft_id,
+                        campaign_type: this.campaignType,
+                        tone: this.tone,
                         recipients: [recipient],
                         send_via: 'email'
                     }
