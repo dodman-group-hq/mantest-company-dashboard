@@ -12,9 +12,26 @@
             <p class="text-[var(--text-secondary)] mt-1">AI-powered content generation</p>
         </div>
         <div class="flex items-center gap-2">
+            <!-- Draft history button -->
+            <button onclick="GhostPlugin.toggleDraftHistory()"
+                    id="history-btn"
+                    class="px-3 py-1.5 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                📂 Drafts
+            </button>
             <span id="generation-status" class="px-3 py-1 text-sm rounded-full bg-[var(--bg-side)] text-[var(--text-secondary)]">
                 Ready
             </span>
+        </div>
+    </div>
+
+    <!-- Draft History Panel (hidden by default) -->
+    <div id="draft-history-panel" class="hidden bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-4 mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-[var(--text-main)]">Saved Drafts</h3>
+            <button onclick="GhostPlugin.toggleDraftHistory()" class="text-[var(--text-muted)] hover:text-[var(--text-main)] text-sm">✕ Close</button>
+        </div>
+        <div id="draft-history-list" class="space-y-2 max-h-48 overflow-y-auto">
+            <p class="text-sm text-[var(--text-muted)] italic">No saved drafts yet.</p>
         </div>
     </div>
     
@@ -137,7 +154,13 @@
                 
                 <!-- Editor Header -->
                 <div class="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
-                    <h3 class="font-semibold text-[var(--text-main)]">Draft</h3>
+                    <div class="flex items-center gap-3">
+                        <h3 class="font-semibold text-[var(--text-main)]">Draft</h3>
+                        <!-- Character limit warning shown for Twitter -->
+                        <span id="char-limit-warning" class="hidden text-xs text-[var(--warning)] font-medium">
+                            ⚠️ Twitter: keep each tweet under 280 chars
+                        </span>
+                    </div>
                     <div class="flex items-center gap-2">
                         <button id="regenerate-btn" 
                                 onclick="GhostPlugin.regenerateDraft()"
@@ -155,8 +178,8 @@
                 </div>
                 
                 <!-- Editor Content -->
-                <div id="draft-editor" class="flex-1 overflow-y-auto p-6 bg-[var(--bg-side)]">
-                    <div class="text-center text-[var(--text-muted)] py-24">
+                <div id="draft-editor" class="flex-1 overflow-y-auto p-0 bg-[var(--bg-side)]">
+                    <div class="text-center text-[var(--text-muted)] py-24 px-6">
                         <svg class="w-16 h-16 mx-auto mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
@@ -194,6 +217,26 @@
             🚀 Send via Core API
         </button>
     </div>
+
+    <!-- Send Modal -->
+    <div id="send-modal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 class="font-semibold text-[var(--text-main)] mb-4 text-lg">🚀 Send Campaign</h3>
+            <label class="block text-sm text-[var(--text-secondary)] mb-1">Recipient Email</label>
+            <input type="email" id="send-recipient" placeholder="recipient@example.com"
+                   class="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] mb-4">
+            <div class="flex gap-3 justify-end">
+                <button onclick="GhostPlugin.closeSendModal()"
+                        class="px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+                    Cancel
+                </button>
+                <button onclick="GhostPlugin.confirmSend()"
+                        class="px-4 py-2 text-sm bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Plugin JavaScript -->
@@ -202,7 +245,8 @@
     const GhostPlugin = {
         campaignType: 'outreach',
         tone: 'consultative',
-        currentDraft: null,
+        currentDraft: null,       // stores the content string
+        currentDraftMeta: null,   // stores the full draft object from API
         isGenerating: false,
         
         init() {
@@ -224,19 +268,20 @@
 
             if (leadIds.length > 0) {
                 const leadsContainer = document.getElementById('leads-context');
-                leadsContainer.innerHTML = leadIds.map((id, i) => {
-                    const ctx = leadContext[i];
-                    const label = ctx?.company && ctx.company !== 'Unknown'
-                        ? `${ctx.company}${ctx.signal ? ' · ' + ctx.signal : ''}`
-                        : `Lead ${i + 1}`;
-                    const tooltip = ctx?.title ? ` title="${ctx.title.replace(/"/g, '&quot;')}"` : '';
-                    return `<span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded cursor-default"${tooltip}>📌 ${label}</span>`;
-                }).join(' ');
+                if (leadsContainer) {
+                    leadsContainer.innerHTML = leadIds.map((id, i) => {
+                        const ctx = leadContext[i];
+                        const label = ctx?.company && ctx.company !== 'Unknown'
+                            ? `${ctx.company}${ctx.signal ? ' · ' + ctx.signal : ''}`
+                            : `Lead ${i + 1}`;
+                        const tooltip = ctx?.title ? ` title="${ctx.title.replace(/"/g, '&quot;')}"` : '';
+                        return `<span class="px-2 py-1 text-xs bg-[var(--accent-light)] text-[var(--accent)] rounded cursor-default"${tooltip}>📌 ${label}</span>`;
+                    }).join(' ');
+                }
 
                 this.selectedLeadIds = leadIds;
                 this.leadContext = leadContext;
 
-                // Add lead signals to context
                 const signals = leadContext
                     .filter(l => l.title)
                     .map(l => `• ${l.company}: ${l.title.slice(0, 100)}`)
@@ -249,21 +294,21 @@
             const vulnIntel = window.Sovereign.getFromLocalStorage('shadow_vuln_intel');
 
             if (competitorId) {
-                // Resolve competitor name from stored competitors or vuln intel
                 const competitors = window.Sovereign.getFromLocalStorage('shadow_competitors') || [];
                 const comp = competitors.find(c => c.id === competitorId) ||
                     (vulnIntel?.competitor_id === competitorId ? vulnIntel : null);
                 const compLabel = comp?.name || competitorId.substring(0, 8);
 
                 const compContainer = document.getElementById('competitor-context');
-                compContainer.innerHTML = `
-                    <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded cursor-default">
-                        🎯 vs ${compLabel}${comp?.domain ? ' (' + comp.domain + ')' : ''}
-                    </span>
-                `;
+                if (compContainer) {
+                    compContainer.innerHTML = `
+                        <span class="px-2 py-1 text-xs bg-[var(--warning-light)] text-[var(--warning)] rounded cursor-default">
+                            🎯 vs ${compLabel}${comp?.domain ? ' (' + comp.domain + ')' : ''}
+                        </span>
+                    `;
+                }
                 this.selectedCompetitorId = competitorId;
 
-                // Add vulnerability exploit angles to context
                 if (vulnIntel?.vulnerabilities?.length > 0) {
                     const angles = vulnIntel.vulnerabilities
                         .map(v => {
@@ -275,7 +320,6 @@
                 }
             }
 
-            // Pre-fill custom context textarea with all available intelligence
             if (contextInput && !contextInput.value && contextParts.length > 0) {
                 contextInput.value = contextParts.join('\n\n');
             }
@@ -284,7 +328,6 @@
         selectCampaignType(type) {
             this.campaignType = type;
             
-            // Update UI
             document.querySelectorAll('.campaign-btn').forEach(btn => {
                 btn.classList.remove('active', 'bg-[var(--accent-light)]', 'border-[var(--accent)]');
             });
@@ -293,18 +336,23 @@
             if (selectedBtn) {
                 selectedBtn.classList.add('active', 'bg-[var(--accent-light)]', 'border-[var(--accent)]');
             }
+
+            // Show Twitter character hint if relevant
+            const warning = document.getElementById('char-limit-warning');
+            if (warning) {
+                warning.classList.toggle('hidden', type !== 'twitter');
+            }
         },
         
         selectTone(tone) {
             this.tone = tone;
             
-            // Update UI
             document.querySelectorAll('.tone-option').forEach(opt => {
                 opt.classList.remove('active', 'bg-[var(--accent-light)]', 'border-2', 'border-[var(--accent)]');
                 opt.classList.add('border', 'border-[var(--border-color)]');
             });
             
-            const selectedOpt = document.querySelector(`input[value="${tone}"]`).closest('.tone-option');
+            const selectedOpt = document.querySelector(`input[value="${tone}"]`)?.closest('.tone-option');
             if (selectedOpt) {
                 selectedOpt.classList.add('active', 'bg-[var(--accent-light)]', 'border-2', 'border-[var(--accent)]');
                 selectedOpt.classList.remove('border-[var(--border-color)]');
@@ -315,27 +363,29 @@
             if (this.isGenerating) return;
             this.isGenerating = true;
 
-            const campaignType = this.campaignType;
-            const tone = this.tone;
-            const customContext = document.getElementById('custom-context').value;
+            // Snapshot values at time of click — guards against undefined if
+            // HTMX re-renders the fragment before the response comes back
+            const campaignType = this.campaignType || 'outreach';
+            const tone = this.tone || 'consultative';
+            const customContext = document.getElementById('custom-context')?.value || null;
             
-            // Disable button
             const generateBtn = document.getElementById('generate-btn');
             generateBtn.disabled = true;
             generateBtn.innerHTML = '⏳ Generating...';
             
-            // Update status
             document.getElementById('generation-status').textContent = 'Generating...';
             document.getElementById('generation-status').classList.add('animate-pulse');
+
+            // Show a loading skeleton in the editor while waiting
+            this._showLoadingSkeleton();
             
             try {
-                // Call real API
                 const result = await window.Sovereign.apiRequest(
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/generate`,
                     'POST',
                     {
-                        campaign_type: campaignType || 'outreach',
-                        tone: tone || 'consultative', 
+                        campaign_type: campaignType,
+                        tone: tone,
                         lead_id: this.leadContext?.[0]?.id || this.selectedLeadIds?.[0] || null,
                         competitor_id: this.selectedCompetitorId || null,
                         custom_context: customContext || null,
@@ -344,9 +394,9 @@
                 );
                 
                 if (result.success && result.draft) {
-                    this.currentDraft = result.draft;
+                    this.currentDraft = result.draft.content;
+                    this.currentDraftMeta = result.draft;
                     this.displayDraft(result.draft.content);
-                    
                     window.Sovereign.showNotification('Draft generated successfully!', 'success');
                 } else {
                     throw new Error(result.status || 'Generation failed');
@@ -355,228 +405,101 @@
                 console.error('Generation error:', error);
                 window.Sovereign.showNotification('Failed to generate draft', 'error');
                 
-                // Show error in editor
                 document.getElementById('draft-editor').innerHTML = `
-                    <div class="text-center text-[var(--error)] py-12">
+                    <div class="text-center text-[var(--error)] py-12 px-6">
                         <p class="font-medium mb-2">Generation failed</p>
                         <p class="text-sm">${error.message || 'Please try again'}</p>
                     </div>
                 `;
             } finally {
                 this.isGenerating = false;
-
-                // Re-enable button
                 generateBtn.disabled = false;
                 generateBtn.innerHTML = '✨ Generate Draft';
-                
                 document.getElementById('generation-status').textContent = 'Ready';
                 document.getElementById('generation-status').classList.remove('animate-pulse');
             }
         },
-        
-        async generateContent(lead, competitor, customContext) {
-            // In production, this would call your AI API
-            // For now, generate template-based content
-            
-            const templates = {
-                outreach: this.generateOutreachEmail(lead, competitor, customContext),
-                linkedin: this.generateLinkedInMessage(lead, competitor, customContext),
-                twitter: this.generateTwitterThread(lead, competitor, customContext),
-                blog: this.generateBlogPost(lead, competitor, customContext)
-            };
-            
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            return templates[this.campaignType] || templates.outreach;
-        },
-        
-        generateOutreachEmail(lead, competitor, customContext) {
-            const compName = competitor ? competitor.name : 'existing solutions';
-            const vulns = competitor ? competitor.vulnerabilities.filter(v => v.found) : [];
-            const vuln = vulns.length > 0 ? vulns[0].label.toLowerCase() : 'inefficiencies';
-            
-            return `Subject: Quick question about ${lead.company}'s ${lead.signal}
 
-Hi [Name],
-
-I noticed ${lead.company} recently ${lead.signal.replace('_', ' ')} - congratulations on the momentum!
-
-I'm reaching out because we work with companies at your stage who are looking to scale efficiently. ${competitor ? `Many of our clients were previously with ${compName}, but made the switch when they needed to address ${vuln}.` : 'We help companies like yours overcome common growth challenges.'}
-
-${customContext ? `\n${customContext}\n` : ''}
-
-Our approach helps companies:
-• Accelerate growth without increasing overhead
-• Automate repetitive processes
-• Scale their operations intelligently
-
-Would you be open to a 15-minute call this week to explore if we could help ${lead.company} achieve similar results?
-
-Best regards,
-[Your Name]
-[Your Title]
-[Your Company]
-
-P.S. I've worked with companies similar to ${lead.company} who saw a 3x improvement in efficiency within 90 days.`;
-        },
-        
-        generateLinkedInMessage(lead, competitor, customContext) {
-            const compName = competitor ? competitor.name : 'traditional tools';
-            
-            return `Hey [Name],
-
-Saw that ${lead.company} is ${lead.signal.replace('_', ' ')} - that's exciting!
-
-We've helped similar companies ${competitor ? `move away from solutions like ${compName}` : 'scale efficiently'} by automating their most time-consuming processes.
-
-${customContext ? `\n${customContext}\n` : ''}
-
-Worth a quick chat to see if we can help accelerate your growth?
-
-Cheers,
-[Your Name]`;
-        },
-        
-        generateTwitterThread(lead, competitor, customContext) {
-            const compName = competitor ? competitor.name : 'existing solutions';
-            
-            return `🧵 Thread: Why ${lead.company}'s recent ${lead.signal.replace('_', ' ')} is a big deal
-
-1/ ${lead.company} just ${lead.signal.replace('_', ' ')}. Here's why this matters for the industry...
-
-2/ Companies at this stage typically struggle with scaling operations${competitor ? `, especially if they're using legacy tools like ${compName}` : ''}.
-
-3/ The smart move? Automate early, scale efficiently, and avoid the common pitfalls.
-
-${customContext ? `\n4/ ${customContext}\n` : ''}
-
-5/ We're seeing a major shift in how companies approach growth. The winners are those who invest in automation NOW, not later.
-
-6/ Congrats to the ${lead.company} team. Looking forward to seeing what's next! 🚀`;
-        },
-        
-        generateBlogPost(lead, competitor, customContext) {
-            const compName = competitor ? competitor.name : 'traditional approaches';
-            
-            return `# How ${lead.company}'s ${lead.signal.replace('_', ' ')} Signals a Major Market Shift
-
-## Introduction
-
-When ${lead.company} recently ${lead.signal.replace('_', ' ')}, it wasn't just another company milestone. It's a signal that the market is fundamentally evolving.
-
-${competitor ? `## The Problem with Existing Solutions
-
-For years, companies in this space have relied on solutions like ${compName}. But as ${lead.company} demonstrates, that model is changing.
-
-The vulnerabilities in traditional approaches are becoming clear:
-${competitor.vulnerabilities.filter(v => v.found).map(v => `- ${v.label}`).join('\n')}` : ''}
-
-## The New Approach
-
-${customContext || 'Companies like yours are pioneering a different way - one that prioritizes automation, efficiency, and scalability.'}
-
-## What This Means for the Industry
-
-The ${lead.company} announcement is just the beginning. We're seeing:
-
-1. **Increased automation adoption** - Companies are realizing manual processes don't scale
-2. **Move away from legacy tools** - Modern problems require modern solutions
-3. **Focus on efficiency** - Growth without proportional cost increases
-
-## Conclusion
-
-${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a blueprint for what's coming next in our industry.
-
----
-
-*Want to learn how your company can achieve similar results? [Contact us] to discuss your growth strategy.*`;
-        },
-        
-        async typeWriterEffect(text) {
+        _showLoadingSkeleton() {
             const editor = document.getElementById('draft-editor');
-            editor.innerHTML = '<div id="typewriter-content" class="font-mono text-sm text-[var(--text-main)] whitespace-pre-wrap leading-relaxed"></div>';
-            
-            const container = document.getElementById('typewriter-content');
-            let index = 0;
-            
-            return new Promise((resolve) => {
-                const interval = setInterval(() => {
-                    if (index < text.length) {
-                        container.textContent += text[index];
-                        index++;
-                        
-                        // Auto-scroll
-                        editor.scrollTop = editor.scrollHeight;
-                    } else {
-                        clearInterval(interval);
-                        
-                        // Convert to editable textarea
-                        editor.innerHTML = `
-                            <textarea id="draft-textarea" 
-                                      class="w-full h-full p-0 border-none bg-transparent text-sm text-[var(--text-main)] font-mono resize-none focus:outline-none"
-                                      oninput="GhostPlugin.onDraftEdit()">${text}</textarea>
-                        `;
-                        
-                        resolve();
-                    }
-                }, 10); // Typing speed
-            });
+            editor.innerHTML = `
+                <div class="p-6 space-y-3 animate-pulse">
+                    <div class="h-3 bg-[var(--border-color)] rounded w-3/4"></div>
+                    <div class="h-3 bg-[var(--border-color)] rounded w-full"></div>
+                    <div class="h-3 bg-[var(--border-color)] rounded w-5/6"></div>
+                    <div class="h-3 bg-[var(--border-color)] rounded w-2/3"></div>
+                    <div class="h-3 bg-[var(--border-color)] rounded w-full"></div>
+                    <div class="h-3 bg-[var(--border-color)] rounded w-4/5"></div>
+                </div>
+            `;
         },
 
+        // ── FIX: renders as editable textarea, not static HTML ──────────
         displayDraft(content) {
             const editor = document.getElementById('draft-editor');
             
-            // Display content with formatting
             editor.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-sm">
-                    <div class="prose max-w-none">
-                        ${content.replace(/\n/g, '<br>')}
-                    </div>
-                </div>
+                <textarea id="draft-textarea"
+                          class="w-full h-full p-6 border-none bg-white text-sm text-[var(--text-main)] font-mono resize-none focus:outline-none leading-relaxed"
+                          oninput="GhostPlugin.onDraftEdit()"
+                          spellcheck="true"
+                          placeholder="Your draft will appear here...">${this._escapeHtml(content)}</textarea>
             `;
+
+            // Ensure textarea fills the editor container height
+            const textarea = document.getElementById('draft-textarea');
+            if (textarea) {
+                textarea.style.minHeight = '100%';
+            }
             
-            // Show meta footer
             document.getElementById('draft-meta').classList.remove('hidden');
-            
-            // Update counts
-            const words = content.split(/\s+/).length;
-            const chars = content.length;
-            
-            document.getElementById('word-count').textContent = words;
-            document.getElementById('char-count').textContent = chars;
-            document.getElementById('last-generated').textContent = 
+            this._updateCounts(content);
+            document.getElementById('last-generated').textContent =
                 `Generated ${new Date().toLocaleTimeString()}`;
             
-            // Enable action buttons
             document.getElementById('regenerate-btn').disabled = false;
             document.getElementById('copy-btn').disabled = false;
             document.getElementById('save-draft-btn').disabled = false;
             document.getElementById('send-via-core-btn').disabled = false;
         },
+
+        _escapeHtml(text) {
+            // Prevent content from breaking out of the textarea
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        },
+
+        _updateCounts(text) {
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const chars = text.length;
+            document.getElementById('word-count').textContent = words;
+            document.getElementById('char-count').textContent = chars;
+        },
         
         onDraftEdit() {
             const textarea = document.getElementById('draft-textarea');
             if (textarea) {
+                // Keep currentDraft in sync with what the user is editing
                 this.currentDraft = textarea.value;
-                this.updateDraftMeta(textarea.value);
+                this._updateCounts(textarea.value);
             }
         },
         
         async regenerateDraft() {
             if (this.isGenerating) return;
-            
             window.Sovereign.showNotification('Regenerating with different approach...', 'info');
             await this.generateDraft();
         },
         
+        // ── FIX: reads from currentDraft (string), not missing textarea ─
         copyToClipboard() {
-            const textarea = document.getElementById('draft-textarea');
-            if (!textarea) return;
+            const content = this.currentDraft;
+            if (!content) return;
             
-            window.Sovereign.copyToClipboard(this.currentDraft);
+            window.Sovereign.copyToClipboard(content);
             
-            // Visual feedback
             const copyBtn = document.getElementById('copy-btn');
             const originalText = copyBtn.innerHTML;
             copyBtn.innerHTML = '✓ Copied';
@@ -588,61 +511,162 @@ ${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a bl
             }, 2000);
         },
         
+        // ── Saves draft locally AND persists the server draft_id ────────
         saveDraft() {
             if (!this.currentDraft) return;
             
-            const drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
-            drafts.push({
-                id: 'draft_' + Date.now(),
+            const draft = {
+                id: this.currentDraftMeta?.draft_id || ('draft_' + Date.now()),
                 content: this.currentDraft,
                 campaign_type: this.campaignType,
                 tone: this.tone,
-                createdAt: new Date().toISOString()
-            });
-            window.Sovereign.saveToLocalStorage('ghost_drafts', drafts);
+                createdAt: new Date().toISOString(),
+                label: this._draftLabel()
+            };
+
+            const drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
+            // Avoid duplicates — replace if same draft_id exists
+            const idx = drafts.findIndex(d => d.id === draft.id);
+            if (idx >= 0) {
+                drafts[idx] = draft;
+            } else {
+                drafts.unshift(draft); // newest first
+            }
+            // Keep max 20 local drafts
+            window.Sovereign.saveToLocalStorage('ghost_drafts', drafts.slice(0, 20));
             
-            window.Sovereign.showNotification('Draft saved successfully', 'success');
+            window.Sovereign.showNotification('Draft saved!', 'success');
+            this._renderDraftHistory();
         },
-        
-        async sendViaCore() {
+
+        _draftLabel() {
+            const typeLabels = {
+                outreach: '📧 Outreach',
+                linkedin: '💼 LinkedIn',
+                twitter: '🐦 Twitter',
+                blog: '📝 Blog'
+            };
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `${typeLabels[this.campaignType] || this.campaignType} · ${time}`;
+        },
+
+        toggleDraftHistory() {
+            const panel = document.getElementById('draft-history-panel');
+            if (panel.classList.contains('hidden')) {
+                this._renderDraftHistory();
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        },
+
+        _renderDraftHistory() {
+            const container = document.getElementById('draft-history-list');
+            if (!container) return;
+
+            const drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
+            if (drafts.length === 0) {
+                container.innerHTML = '<p class="text-sm text-[var(--text-muted)] italic">No saved drafts yet.</p>';
+                return;
+            }
+
+            container.innerHTML = drafts.map(d => `
+                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--bg-hover)] group">
+                    <button onclick="GhostPlugin.loadDraft('${d.id}')"
+                            class="flex-1 text-left text-sm text-[var(--text-main)] truncate">
+                        ${d.label || d.id}
+                    </button>
+                    <button onclick="GhostPlugin.deleteDraft('${d.id}')"
+                            class="hidden group-hover:block ml-2 text-xs text-[var(--error)] hover:underline">
+                        Delete
+                    </button>
+                </div>
+            `).join('');
+        },
+
+        loadDraft(draftId) {
+            const drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
+            const draft = drafts.find(d => d.id === draftId);
+            if (!draft) return;
+
+            this.currentDraft = draft.content;
+            this.currentDraftMeta = { draft_id: draft.id };
+            this.campaignType = draft.campaign_type || 'outreach';
+            this.tone = draft.tone || 'consultative';
+
+            // Sync UI controls
+            this.selectCampaignType(this.campaignType);
+            const toneInput = document.querySelector(`input[name="tone"][value="${this.tone}"]`);
+            if (toneInput) {
+                toneInput.checked = true;
+                this.selectTone(this.tone);
+            }
+
+            this.displayDraft(draft.content);
+            document.getElementById('draft-history-panel').classList.add('hidden');
+            window.Sovereign.showNotification('Draft loaded', 'info');
+        },
+
+        deleteDraft(draftId) {
+            let drafts = window.Sovereign.getFromLocalStorage('ghost_drafts') || [];
+            drafts = drafts.filter(d => d.id !== draftId);
+            window.Sovereign.saveToLocalStorage('ghost_drafts', drafts);
+            this._renderDraftHistory();
+        },
+
+        // ── Replace prompt() with a proper modal ────────────────────────
+        sendViaCore() {
             if (!this.currentDraft) {
                 window.Sovereign.showNotification('No draft to send', 'error');
                 return;
             }
-            
-            // For now, get recipient from user (you can enhance this)
-            const recipient = prompt('Enter recipient email:');
-            if (!recipient) return;
-            
+            const modal = document.getElementById('send-modal');
+            if (modal) {
+                document.getElementById('send-recipient').value = '';
+                modal.classList.remove('hidden');
+                setTimeout(() => document.getElementById('send-recipient')?.focus(), 50);
+            }
+        },
+
+        closeSendModal() {
+            const modal = document.getElementById('send-modal');
+            if (modal) modal.classList.add('hidden');
+        },
+
+        async confirmSend() {
+            const recipient = document.getElementById('send-recipient')?.value?.trim();
+            if (!recipient) {
+                window.Sovereign.showNotification('Please enter a recipient email', 'error');
+                return;
+            }
+
+            this.closeSendModal();
+
             try {
                 const result = await window.Sovereign.apiRequest(
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/send`,
                     'POST',
                     {
-                        draft_id: this.currentDraft.draft_id,
+                        draft_id: this.currentDraftMeta?.draft_id || null,
                         recipients: [recipient],
                         send_via: 'email'
                     }
                 );
                 
                 if (result.status === 'success') {
-                    window.Sovereign.showNotification(
-                        `Campaign sent to ${recipient}!`,
-                        'success'
-                    );
+                    window.Sovereign.showNotification(`Campaign sent to ${recipient}!`, 'success');
+                } else {
+                    throw new Error(result.message || 'Send failed');
                 }
             } catch (error) {
                 console.error('Send error:', error);
                 window.Sovereign.showNotification('Failed to send campaign', 'error');
             }
         },
-        
+
+        // Kept for backward compatibility — no longer called internally
         updateDraftMeta(text) {
-            const words = text.trim().split(/\s+/).length;
-            const chars = text.length;
-            
-            document.getElementById('word-count').textContent = words;
-            document.getElementById('char-count').textContent = chars;
+            this._updateCounts(text);
         }
     };
     
@@ -667,9 +691,30 @@ ${lead.company}'s ${lead.signal.replace('_', ' ')} is more than news - it's a bl
     accent-color: var(--accent);
 }
 
-/* Draft textarea full height */
+/* Editor textarea fills the flex container */
+#draft-editor {
+    display: flex;
+    flex-direction: column;
+}
+
 #draft-textarea {
-    min-height: 600px;
+    flex: 1;
+    min-height: 580px;
+    width: 100%;
+    padding: 1.5rem;
+    border: none;
+    background: white;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-main);
+    resize: none;
+    outline: none;
+}
+
+#draft-textarea:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 /* Smooth transitions */
@@ -679,14 +724,19 @@ button {
     transition: all 0.2s ease-in-out;
 }
 
-/* Typewriter cursor effect (optional) */
-#typewriter-content::after {
-    content: '|';
-    animation: blink 1s infinite;
+/* Draft history hover */
+#draft-history-list .group:hover button.hidden {
+    display: block;
 }
 
-@keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+/* Loading skeleton shimmer */
+@keyframes shimmer {
+    0% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.4; }
+}
+
+.animate-pulse div {
+    animation: shimmer 1.5s ease-in-out infinite;
 }
 </style>
