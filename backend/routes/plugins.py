@@ -22,7 +22,6 @@ FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend"
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
-
 class PluginExecuteRequest(BaseModel):
     """Execute plugin request"""
     plugin_id: str
