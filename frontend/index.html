@@ -424,10 +424,10 @@
         // loads into #main-content — exactly as if the nav link was clicked.
         document.addEventListener('DOMContentLoaded', function () {
             const path = window.location.pathname;
-            if (path === '/' || path === '') return; // default content already shown
 
             // Map URL paths to their HTMX API endpoints
             const routeMap = {
+                '/':                  '/api/dashboard/overview',
                 '/plugins/sniper':    '/api/plugins/sniper/dashboard',
                 '/plugins/shadow':    '/api/plugins/shadow/dashboard',
                 '/plugins/ghost':     '/api/plugins/ghost/dashboard',
