@@ -157,158 +157,116 @@ async def health_check():
         "core_api": DODMAN_CORE_API_URL
     }
 
-
 # ============================================================================
-# API PROXY TO DODMAN-CORE
+# HELPERS
 # ============================================================================
 
-@app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-async def proxy_to_core_api(
-    path: str,
-    request: Request,
-    authorization: Optional[str] = Header(None)
-):
-    """
-    Proxy all /api/* requests to dodman-core API.
-    
-    This allows the frontend to make requests to /api/auth/*, /api/tenants/*, etc.
-    and have them automatically forwarded to the core API.
-    
-    Args:
-        path: API path (e.g., "auth/request-magic-link")
-        request: Original request
-        authorization: Authorization header (JWT token)
-    
-    Returns:
-        Response from dodman-core API
-    """
+def _extract_tenant_id(authorization: Optional[str]) -> Optional[str]:
+    """Extract tenant_id from a Bearer JWT without full verification."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
     try:
-        # Get request body
-        body = await request.body()
-
-        # Forward all safe headers from the original request.
-        # Critically this includes Authorization — without forwarding it
-        # dodman-core rejects every proxied request with 401.
-        # We skip hop-by-hop headers that must not be forwarded.
-        HOP_BY_HOP = {
-            'host', 'connection', 'keep-alive', 'transfer-encoding',
-            'te', 'trailer', 'upgrade', 'proxy-authorization',
-            'proxy-authenticate',
-        }
-        headers = {
-            k: v for k, v in request.headers.items()
-            if k.lower() not in HOP_BY_HOP
-        }
-
-        # Build full URL to dodman-core API
-        target_url = f"{DODMAN_CORE_API_URL}/api/{path}"
-
-        logger.info(f"Proxying {request.method} {path} -> {target_url}")
-
-        # Tell dodman-core not to compress its response — the GZipMiddleware
-        # on this server will handle compression for the browser. Without this,
-        # httpx decompresses the gzip body but the original Content-Encoding
-        # header is still forwarded, causing the browser to try to decompress
-        # already-plain data and get garbage bytes.
-        headers["accept-encoding"] = "identity"
-
-        # Make request to dodman-core API
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                content=body,
-                params=request.query_params,
-                timeout=30.0
-            )
-        
-        # Return response
-        return Response(
-            content=response.content,
-            status_code=response.status_code,
-            headers=dict(response.headers),
-            media_type=response.headers.get("content-type")
-        )
-    
-    except httpx.ConnectError:
-        logger.error(f"Failed to connect to dodman-core API: {DODMAN_CORE_API_URL}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Core API unavailable"
-        )
-    
-    except Exception as e:
-        logger.error(f"Proxy error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Proxy request failed"
-        )
-
+        import base64, json as _json
+        token = authorization.split(" ", 1)[1]
+        payload_b64 = token.split(".")[1]
+        payload_b64 += "=" * (4 - len(payload_b64) % 4)
+        payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
+        return payload.get("tenant_id")
+    except Exception:
+        return None
 
 # ============================================================================
 # PLUGIN MANAGEMENT
 # ============================================================================
 
 @app.get("/api/dashboard/plugins")
-async def list_available_plugins():
+async def list_available_plugins(authorization: Optional[str] = Header(None)):
     """
-    List all available plugins for this tenant.
-    
-    Returns plugin metadata including name, description, icon, etc.
+    List all plugins and their live status.
+    Fetches status for each known plugin from dodman-core.
     """
-    # TODO: Query dodman-core API for tenant's available plugins
-    # For now, return mock data
-    return {
-        "plugins": [
-            {
-                "id": "sniper",
-                "name": "Sniper",
-                "description": "AI-powered lead capture engine",
-                "icon": "🎯",
-                "category": "intelligence",
-                "status": "active",
-                "version": "1.0.0"
-            },
-            {
-                "id": "mirror",
-                "name": "Mirror",
-                "description": "Trial dashboard generator",
-                "icon": "🪞",
-                "category": "sales",
-                "status": "active",
-                "version": "1.0.0"
-            },
-            {
-                "id": "apollo",
-                "name": "Apollo",
-                "description": "Contact enrichment",
-                "icon": "🚀",
-                "category": "intelligence",
-                "status": "inactive",
-                "version": "1.0.0"
-            }
-        ]
-    }
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    known_plugins = [
+        {"id": "sniper", "name": "Lead Sniper",         "icon": "🎯", "category": "intelligence"},
+        {"id": "shadow", "name": "Shadow Intelligence", "icon": "👁️", "category": "intelligence"},
+        {"id": "ghost",  "name": "Ghost Writer",        "icon": "✍️", "category": "content"},
+    ]
+
+    results = []
+    async with httpx.AsyncClient() as client:
+        for p in known_plugins:
+            try:
+                resp = await client.get(
+                    f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/plugins/{p['id']}/status",
+                    headers={"Authorization": authorization},
+                    timeout=5.0
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    results.append({
+                        **p,
+                        "status":     data.get("status", "unknown"),
+                        "last_run":   data.get("last_run"),
+                        "runs_today": data.get("stats", {}).get("runs_today", 0),
+                    })
+                else:
+                    results.append({**p, "status": "not_installed"})
+            except Exception as e:
+                logger.warning(f"Could not get status for plugin {p['id']}: {e}")
+                results.append({**p, "status": "unavailable"})
+
+    return {"plugins": results}
 
 
 @app.get("/api/dashboard/plugin/{plugin_id}")
-async def get_plugin_details(plugin_id: str):
-    """Get detailed information about a specific plugin."""
-    # TODO: Query dodman-core API
-    return {
-        "plugin": {
-            "id": plugin_id,
-            "name": plugin_id.capitalize(),
-            "description": f"Details for {plugin_id} plugin",
-            "status": "active",
-            "metrics": {
-                "total_runs": 0,
-                "last_run": None,
-                "success_rate": 100
+async def get_plugin_details(plugin_id: str, authorization: Optional[str] = Header(None)):
+    """
+    Get detailed status and metrics for a specific plugin.
+    """
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/plugins/{plugin_id}/status",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail=f"Plugin '{plugin_id}' not found")
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch plugin details")
+
+        data = resp.json()
+        stats = data.get("stats", {})
+
+        return {
+            "plugin": {
+                "id":      plugin_id,
+                "name":    data.get("plugin_name", plugin_id.capitalize()),
+                "status":  data.get("status", "unknown"),
+                "last_run": data.get("last_run"),
+                "metrics": {
+                    "runs_today":   stats.get("runs_today", 0),
+                    "leads_found":  stats.get("leads_found", 0),
+                    "api_cost_usd": stats.get("api_cost_usd", 0.0),
+                    "success_rate": data.get("success_rate", 100),
+                }
             }
         }
-    }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching plugin details for {plugin_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch plugin details")
 
 
 # ============================================================================
@@ -327,17 +285,9 @@ async def get_dashboard_overview(request: Request, authorization: Optional[str] 
     api_usage = "$0.00"
     active_plugins = 0
 
-    if authorization and authorization.startswith("Bearer "):
-        try:
-            import base64, json as _json
-            token = authorization.split(" ", 1)[1]
-            payload_b64 = token.split(".")[1]
-            # Fix padding
-            payload_b64 += "=" * (4 - len(payload_b64) % 4)
-            payload = _json.loads(base64.urlsafe_b64decode(payload_b64))
-            tenant_id = payload.get("tenant_id")
-        except Exception:
-            pass
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     if tenant_id:
         try:
@@ -446,6 +396,94 @@ async def get_dashboard_overview(request: Request, authorization: Optional[str] 
     </div>
     """
     return HTMLResponse(content=html)
+
+
+# ============================================================================
+# API PROXY TO DODMAN-CORE
+# ============================================================================
+
+@app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_to_core_api(
+    path: str,
+    request: Request,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Proxy all /api/* requests to dodman-core API.
+    
+    This allows the frontend to make requests to /api/auth/*, /api/tenants/*, etc.
+    and have them automatically forwarded to the core API.
+    
+    Args:
+        path: API path (e.g., "auth/request-magic-link")
+        request: Original request
+        authorization: Authorization header (JWT token)
+    
+    Returns:
+        Response from dodman-core API
+    """
+    try:
+        # Get request body
+        body = await request.body()
+
+        # Forward all safe headers from the original request.
+        # Critically this includes Authorization — without forwarding it
+        # dodman-core rejects every proxied request with 401.
+        # We skip hop-by-hop headers that must not be forwarded.
+        HOP_BY_HOP = {
+            'host', 'connection', 'keep-alive', 'transfer-encoding',
+            'te', 'trailer', 'upgrade', 'proxy-authorization',
+            'proxy-authenticate',
+        }
+        headers = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in HOP_BY_HOP
+        }
+
+        # Build full URL to dodman-core API
+        target_url = f"{DODMAN_CORE_API_URL}/api/{path}"
+
+        logger.info(f"Proxying {request.method} {path} -> {target_url}")
+
+        # Tell dodman-core not to compress its response — the GZipMiddleware
+        # on this server will handle compression for the browser. Without this,
+        # httpx decompresses the gzip body but the original Content-Encoding
+        # header is still forwarded, causing the browser to try to decompress
+        # already-plain data and get garbage bytes.
+        headers["accept-encoding"] = "identity"
+
+        # Make request to dodman-core API
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                content=body,
+                params=request.query_params,
+                timeout=30.0
+            )
+        
+        # Return response
+        return Response(
+            content=response.content,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type=response.headers.get("content-type")
+        )
+    
+    except httpx.ConnectError:
+        logger.error(f"Failed to connect to dodman-core API: {DODMAN_CORE_API_URL}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Core API unavailable"
+        )
+    
+    except Exception as e:
+        logger.error(f"Proxy error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Proxy request failed"
+        )
 
 
 # ============================================================================
