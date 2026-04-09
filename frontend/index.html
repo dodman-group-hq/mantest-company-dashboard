@@ -455,6 +455,15 @@
                 updateBreadcrumb(path);
                 updateActiveNavLink(path);
             }
+
+            // Wait for auth.js to finish patching fetch and storing the session token
+            // before firing the HTMX request — same pattern used in htmx:afterOnLoad
+            if (window._authReady) {
+                doLoad();
+            } else {
+                setTimeout(doLoad, 150);
+            }
+            
         });
     </script>
     
