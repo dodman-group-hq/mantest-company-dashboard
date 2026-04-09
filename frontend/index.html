@@ -456,14 +456,31 @@
                 updateActiveNavLink(path);
             }
 
-            // Wait for auth.js to finish patching fetch and storing the session token
-            // before firing the HTMX request — same pattern used in htmx:afterOnLoad
+            // Poll for _authReady instead of using a fixed timeout.
+            // This guarantees auth.js has finished patching fetch and storing
+            // the session token before the HTMX request fires, regardless of
+            // how long requireAuth() takes (cold starts, slow network, etc.)
             if (window._authReady) {
                 doLoad();
             } else {
-                setTimeout(doLoad, 150);
+                const poll = setInterval(() => {
+                    if (window._authReady) {
+                        clearInterval(poll);
+                        doLoad();
+                    }
+                }, 50);
+
+                // Safety fallback — if auth never resolves after 5s,
+                // something is wrong (no session), redirect to login
+                setTimeout(() => {
+                    clearInterval(poll);
+                    if (!window._authReady) {
+                        console.warn('Auth did not resolve in time — redirecting to login');
+                        window.location.href = 'https://ai.dodman.group/login.html';
+                    }
+                }, 5000);
             }
-            
+
         });
     </script>
     
