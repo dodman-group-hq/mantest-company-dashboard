@@ -89,7 +89,7 @@ const AUTH = (() => {
         const emailPrefix = email.split('@')[0]
             .replace(/[._-]/g, ' ')
             .replace(/\b\w/g, c => c.toUpperCase());
-        const userName = emailPrefix || tenantName;
+        const userName = tenantName || emailPrefix;
 
         const role = payload.role
             ? payload.role.charAt(0).toUpperCase() + payload.role.slice(1)
