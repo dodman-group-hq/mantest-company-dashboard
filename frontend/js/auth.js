@@ -80,11 +80,25 @@ const AUTH = (() => {
     }
 
     function populatePlaceholders(payload) {
-        const tenantName = sessionStorage.getItem('dodman_tenant_name') || 'Dashboard';
+        // Prefer tenant_name from token, fall back to sessionStorage, then default
+        const tenantName = payload.tenant_name
+            || sessionStorage.getItem('dodman_tenant_name')
+            || 'Dashboard';
+
         const email      = payload.email || '';
-        const userName   = email.split('@')[0] || tenantName;
-        const role       = payload.role || 'Admin';
-        const initials   = userName.slice(0, 2).toUpperCase();
+        const emailPrefix = email.split('@')[0]
+            .replace(/[._-]/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+        const userName = emailPrefix || tenantName;
+
+        const role = payload.role
+            ? payload.role.charAt(0).toUpperCase() + payload.role.slice(1)
+            : 'Admin';
+
+        const nameParts = userName.trim().split(/\s+/);
+        const initials  = nameParts.length >= 2
+            ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+            : userName.slice(0, 2).toUpperCase();
 
         function replaceInNode(node, placeholder, value) {
             if (node.nodeType === Node.TEXT_NODE) {
