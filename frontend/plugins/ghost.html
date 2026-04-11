@@ -788,7 +788,10 @@
             const errorEl = document.getElementById('send-modal-error');
 
             if (!recipient || !recipient.includes('@')) {
-                if (errorEl) { errorEl.textContent = 'Please enter a valid email address.'; errorEl.classList.remove('hidden'); }
+                if (errorEl) { 
+                    errorEl.textContent = 'Please enter a valid email address.'; 
+                    errorEl.classList.remove('hidden'); 
+                }
                 return;
             }
 
@@ -801,20 +804,42 @@
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/send`,
                     'POST',
                     {
-                        draft_id: this.currentDraftMeta?.draft_id || null,
+                        draft_id:  this.currentDraftMeta?.draft_id || null,
                         recipients: [recipient],
-                        send_via: 'email'
+                        send_via:  'email'
                     }
                 );
-                if (result.status === 'success') {
+
+                // ── Handle full success ───────────────────────────────────────────
+                if (result.status === 'success' && (!result.failed || result.failed.length === 0)) {
                     this.closeSendModal();
-                    window.Sovereign.showNotification(`Campaign sent to ${recipient}!`, 'success');
+                    window.Sovereign.showNotification(
+                        `Campaign sent to ${recipient}!`, 'success'
+                    );
+
+                // ── Handle partial failure (some sent, some failed) ───────────────
+                } else if (result.status === 'success' && result.failed?.length > 0) {
+                    this.closeSendModal();
+                    window.Sovereign.showNotification(
+                        `Sent to ${result.sent_to.length} recipient(s) but failed for: ${result.failed.join(', ')}`,
+                        'warning'
+                    );
+
+                // ── Handle complete failure ───────────────────────────────────────
                 } else {
-                    throw new Error(result.message || 'Send failed');
+                    throw new Error(
+                        result.failed?.length 
+                            ? `Failed to send to: ${result.failed.join(', ')}` 
+                            : result.message || 'Send failed'
+                    );
                 }
+
             } catch (error) {
                 console.error('Send error:', error);
-                if (errorEl) { errorEl.textContent = error.message || 'Failed to send. Please try again.'; errorEl.classList.remove('hidden'); }
+                if (errorEl) { 
+                    errorEl.textContent = error.message || 'Failed to send. Please try again.'; 
+                    errorEl.classList.remove('hidden'); 
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Send';
