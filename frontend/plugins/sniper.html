@@ -50,6 +50,15 @@
                        class="w-full h-2 bg-[var(--bg-side)] rounded-lg appearance-none cursor-pointer"
                        oninput="document.getElementById('intensity-value').textContent = this.value">
             </div>
+
+            <!-- Minimum Score Filter -->    
+            <div>
+                <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                    Min Score: <span id="score-value">65</span>
+                </label>
+                <input type="range" id="min-score" min="0" max="100" value="65"
+                    oninput="document.getElementById('score-value').textContent = this.value; SniperPlugin.loadLeads(this.value)">
+            </div>
             
             <!-- Scan Button -->
             <div class="flex items-end">
@@ -86,6 +95,18 @@
             <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] overflow-hidden">
                 <div class="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
                     <h3 class="font-semibold text-[var(--text-main)]">Found Targets</h3>
+                    <div class="flex gap-2">
+                        <button onclick="SniperPlugin.filterBySource('all')" 
+                                class="source-filter-btn active px-2 py-1 text-xs rounded border">All</button>
+                        <button onclick="SniperPlugin.filterBySource('reddit')" 
+                                class="source-filter-btn px-2 py-1 text-xs rounded border">Reddit</button>
+                        <button onclick="SniperPlugin.filterBySource('google_news')" 
+                                class="source-filter-btn px-2 py-1 text-xs rounded border">News</button>
+                        <button onclick="SniperPlugin.filterBySource('indeed')" 
+                                class="source-filter-btn px-2 py-1 text-xs rounded border">Indeed</button>
+                        <button onclick="SniperPlugin.filterBySource('adzuna')" 
+                                class="source-filter-btn px-2 py-1 text-xs rounded border">Adzuna</button>
+                    </div>
                     <span id="target-count" class="text-sm text-[var(--text-muted)]">0 leads</span>
                 </div>
                 
@@ -160,35 +181,163 @@
             // Update UI
             document.getElementById('scan-toggle').innerHTML = '⏸ Stop Scan';
             document.getElementById('sniper-status').textContent = 'Scanning...';
-            
+            document.getElementById('sniper-status').classList.add(
+                'bg-[var(--success-light)]', 'text-[var(--success-dark)]', 'animate-pulse'
+            );
+
+            // Clear signal feed and show scanning state
+            const feed = document.getElementById('signal-feed');
+            feed.innerHTML = `
+                <div class="text-center text-[var(--text-muted)] py-6 animate-pulse">
+                    <p>🔍 Scanning sources...</p>
+                </div>
+            `;
+
             try {
-                // Call real API
+                // ── Fire scan in async mode — returns immediately with scour_id ──────
                 const result = await window.Sovereign.apiRequest(
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/run-scour`,
                     'POST',
                     {
-                        sources: ['twitter', 'apollo', 'google_news', 'job_boards'],
-                        max_leads: parseInt(intensity),
-                        async_mode: false
+                        sources:    ['twitter', 'apollo', 'google_news', 'job_boards'],
+                        max_leads:  parseInt(intensity),
+                        async_mode: true   // ← key change: don't block the UI
                     }
                 );
-                
-                if (result.success) {
+
+                if (result.success && result.scour_id) {
                     window.Sovereign.showNotification(
-                        `Scan completed! Found ${result.leads_found} leads`,
-                        'success'
+                        'Scan started — monitoring signals...', 'info'
                     );
-                    
-                    // Load leads from API
-                    await this.loadLeads();
+                    // ── Start polling for live updates ────────────────────────────
+                    this.pollScanProgress(result.scour_id);
+                } else {
+                    throw new Error(result.message || 'Failed to start scan');
                 }
+
+                // Add any source errors to the signal feed
+                if (result.source_errors) {
+                    Object.entries(result.source_errors).forEach(([src, err]) => {
+                        if (err.type === 'not_configured') {
+                            SniperPlugin.addSignalToFeed({
+                                source: src,
+                                type:   'upgrade_prompt',
+                                message: err.message,
+                            });
+                        }
+                    });
+                }
+
             } catch (error) {
                 console.error('Scan error:', error);
-                window.Sovereign.showNotification('Scan failed', 'error');
+                window.Sovereign.showNotification('Scan failed to start', 'error');
+                this.stopScan();
             }
-            
-            this.isScanning = false;
-            this.stopScan();
+        },
+
+        pollScanProgress(scourId) {
+            let pollCount     = 0;
+            const MAX_POLLS   = 60;   // stop after 5 minutes (60 × 5s)
+            const INTERVAL_MS = 5000; // poll every 5 seconds
+
+            // Track how many leads we've already shown so we only add new ones
+            const shownLeadIds = new Set(this.leads.map(l => l.id));
+
+            this.scanInterval = setInterval(async () => {
+                pollCount++;
+
+                try {
+                    // ── Add a live signal entry to the feed on each poll ──────────
+                    const sources     = ['Twitter', 'Apollo', 'Google News', 'Job Boards'];
+                    const signalTypes = ['funding_event', 'hiring_spike', 'product_launch', 'pain_point'];
+                    this.addSignalToFeed({
+                        source: sources[pollCount % sources.length],
+                        type:   signalTypes[pollCount % signalTypes.length],
+                        timestamp: new Date(),
+                    });
+
+                    // ── Fetch latest leads from vault ─────────────────────────────
+                    const leadsResult = await window.Sovereign.apiRequest(
+                        `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/leads?min_score=0`,
+                        'GET'
+                    );
+
+                    if (leadsResult.success && leadsResult.leads) {
+                        // Only add leads we haven't shown yet
+                        const newLeads = leadsResult.leads.filter(l => {
+                            const id = l.prospect_id || l.storage_id || l.id;
+                            return !shownLeadIds.has(id);
+                        });
+
+                        newLeads.forEach(lead => {
+                            const ld       = lead.lead_data || lead;
+                            const raw      = ld.raw_data || {};
+                            let company    = lead.identity?.name || ld.identity?.name
+                                || raw.news_source || raw.company;
+                            if (!company && raw.url) {
+                                try { company = new URL(raw.url).hostname.replace('www.', ''); } catch {}
+                            }
+                            company = company || 'Unknown';
+
+                            const mappedLead = {
+                                id:           lead.prospect_id || lead.storage_id || `lead_${Date.now()}`,
+                                company,
+                                signal:       (ld.signal_type || ld.keyword || ld.source || 'signal').replace(/_/g, ' '),
+                                score:        lead.score ?? ld.score ?? (ld.sentiment_score != null ? Math.round(ld.sentiment_score * 100) : 0),
+                                source:       ld.source || lead.source || 'API',
+                                title:        raw.title || '',
+                                url:          raw.url || '',
+                                keyword:      ld.keyword || '',
+                                published_at: raw.published_at || '',
+                                selected:     false,
+                                rawData:      lead,
+                            };
+
+                            shownLeadIds.add(mappedLead.id);
+                            this.leads.push(mappedLead);
+                            this.addLeadToTable(mappedLead);
+
+                            // Also pulse the signal feed when a real lead comes in
+                            this.addSignalToFeed({
+                                source:    mappedLead.source,
+                                type:      mappedLead.signal,
+                                timestamp: new Date(),
+                                isLead:    true,
+                                company:   mappedLead.company,
+                            });
+                        });
+
+                        document.getElementById('target-count').textContent =
+                            `${this.leads.length} leads`;
+                    }
+
+                    // ── Check scour status to know when it's done ─────────────────
+                    const statusResult = await window.Sovereign.apiRequest(
+                        `/api/tenants/${window.Sovereign.getTenantId()}/plugins/sniper/status`,
+                        'GET'
+                    );
+
+                    const scourDone = statusResult?.stats?.last_scour_id === scourId
+                        && statusResult?.stats?.last_scour_status === 'completed';
+
+                    if (scourDone || pollCount >= MAX_POLLS) {
+                        clearInterval(this.scanInterval);
+                        this.scanInterval = null;
+                        this.isScanning   = false;
+
+                        const totalFound  = this.leads.length;
+                        window.Sovereign.showNotification(
+                            `Scan complete — ${totalFound} leads found`, 'success'
+                        );
+                        this.stopScan();
+                    }
+
+                } catch (error) {
+                    console.error('Poll error:', error);
+                    // Don't stop polling on a single failed poll — network blips happen
+                }
+
+            }, INTERVAL_MS);
         },
         
         stopScan() {
@@ -221,25 +370,44 @@
         },
         
         addSignalToFeed(signal) {
-            const feed = document.getElementById('signal-feed');
+            const feed    = document.getElementById('signal-feed');
+
+            // Remove the initial placeholder if still there
+            const placeholder = feed.querySelector('.animate-pulse');
+            if (placeholder) placeholder.remove();
+
+            const isLead  = signal.isLead || false;
             const signalEl = document.createElement('div');
-            signalEl.className = 'p-3 bg-[var(--bg-side)] rounded-lg border-l-4 border-[var(--accent)]';
+            signalEl.className = `p-3 rounded-lg border-l-4 ${
+                isLead
+                    ? 'bg-[var(--success-light)] border-[var(--success)]'
+                    : 'bg-[var(--bg-side)] border-[var(--accent)]'
+            }`;
+
             signalEl.innerHTML = `
                 <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
-                    <span class="font-medium text-[var(--accent)]">${signal.source}</span>
+                    <span class="font-medium ${isLead ? 'text-[var(--success)]' : 'text-[var(--accent)]'}">
+                        ${isLead ? '🎯 Lead Found' : signal.source}
+                    </span>
                     <span>${new Date().toLocaleTimeString()}</span>
                 </div>
-                <p class="text-sm text-[var(--text-main)]">${this.generateRawSignal(signal.type)}</p>
+                <p class="text-sm text-[var(--text-main)]">
+                    ${isLead
+                        ? `<strong>${signal.company}</strong> — ${signal.type}`
+                        : this.generateRawSignal(signal.type)
+                    }
+                </p>
             `;
-            
+
             feed.insertBefore(signalEl, feed.firstChild);
-            
-            // Keep only last 20
+
+            // Keep only last 20 signals
             while (feed.children.length > 20) {
                 feed.removeChild(feed.lastChild);
             }
-            
-            document.getElementById('signal-count').textContent = `${feed.children.length} signals`;
+
+            document.getElementById('signal-count').textContent =
+                `${feed.children.length} signals`;
         },
         
         generateRawSignal(type) {
@@ -302,6 +470,14 @@
                         📌 Pin
                     </button>
                 </td>
+            `;
+            
+            row.innerHTML += `
+                <tr id="why-now-${lead.id}" class="hidden bg-[var(--bg-side)]">
+                    <td colspan="5" class="px-4 py-3 text-sm text-[var(--text-secondary)] italic">
+                        ${lead.why_now || 'Deep-dive not yet run for this lead.'}
+                    </td>
+                </tr>
             `;
             
             tbody.insertBefore(row, tbody.firstChild);
@@ -432,9 +608,14 @@
                 );
                 
                 // Update UI with real stats
-                if (status.stats) {
-                    console.log('Sniper stats:', status.stats);
+                if (status.today_stats) {
+                    document.getElementById('leads-today').textContent  = status.today_stats.leads_found;
+                    document.getElementById('cost-today').textContent   = `$${status.today_stats.api_cost_usd.toFixed(4)}`;
+                    document.getElementById('budget-left').textContent  = `$${status.rate_limits.budget_remaining_usd.toFixed(2)}`;
                 }
+                console.log('Today\'s stats:', status.today_stats);
+                console.log('Rate limits:', status.rate_limits);
+
             } catch (error) {
                 console.error('Status check failed:', error);
             }
