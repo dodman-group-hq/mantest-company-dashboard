@@ -161,53 +161,126 @@
     </div>
 
     <script>
-        // ── Token storage ────────────────────────────────────────────────────
         const SESSION_KEY = 'dodman_session_token';
         const REFRESH_KEY = 'dodman_refresh_token';
         const TENANT_KEY  = 'dodman_tenant_id';
+        const CORE_API    = 'https://dodman-core.onrender.com';
+        const LOGIN_URL   = 'https://ai.dodman.group/login.html';
 
-        // ── This page serves as /auth/callback ───────────────────────────────
-        // dodman-core redirects here after magic link verification with tokens
-        // in the query string. We store them and redirect to the dashboard.
+        // ── Error messages mapped from dodman-core detail strings ────────────────
+        const ERROR_MESSAGES = {
+            'Magic link has expired':        'This magic link has expired. Please request a new one.',
+            'Magic link already used':       'This magic link has already been used. Please request a new one.',
+            'Magic link invalid':            'This magic link is invalid. Please request a new one.',
+            'Token has expired':             'This magic link has expired. Please request a new one.',
+            'Invalid token':                 'This magic link is invalid. Please request a new one.',
+        };
+
+        function friendlyError(detail) {
+            if (!detail) return 'Verification failed. Please request a new magic link.';
+            for (const [key, msg] of Object.entries(ERROR_MESSAGES)) {
+                if (detail.includes(key)) return msg;
+            }
+            return detail;
+        }
+
+        // ── Flow 1: Magic link click (/verify?token=...) ─────────────────────────
+        // User clicked the email link. We call the verification endpoint ourselves
+        // and handle both success (redirect) and error (friendly message) here.
+        async function handleMagicLink(token) {
+            document.getElementById('statusText').textContent =
+                'Verifying your magic link...';
+
+            try {
+                const response = await fetch(
+                    `${CORE_API}/api/auth/auth/magic?token=${encodeURIComponent(token)}`
+                );
+
+                // dodman-core redirects on success — if we're still here it's an error.
+                // But in case it returns JSON tokens directly:
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // If tokens come back directly in JSON
+                    if (data.session_token) {
+                        sessionStorage.setItem(SESSION_KEY, data.session_token);
+                        if (data.refresh_token) sessionStorage.setItem(REFRESH_KEY, data.refresh_token);
+                        if (data.tenant_id)     sessionStorage.setItem(TENANT_KEY, data.tenant_id);
+                        if (data.subdomain)     sessionStorage.setItem('dodman_subdomain', data.subdomain);
+                        showSuccess();
+                        return;
+                    }
+
+                    // If it redirects via a redirect_url field
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
+                        return;
+                    }
+                }
+
+                // Error response — parse and show friendly message
+                let detail = 'Verification failed. Please request a new magic link.';
+                try {
+                    const err = await response.json();
+                    detail = err.detail || err.message || detail;
+                } catch { /* response wasn't JSON */ }
+
+                showError(friendlyError(detail));
+
+            } catch (error) {
+                console.error('Magic link verification error:', error);
+                showError('Network error. Please check your connection and try again.');
+            }
+        }
+
+        // ── Flow 2: Post-verification callback (/auth/callback?session_token=...) ─
+        // dodman-core redirected here after verifying the token server-side.
+        // We just store the tokens and redirect to the dashboard.
         function handleCallback() {
-            const params        = new URLSearchParams(window.location.search);
-            const sessionToken  = params.get('session_token');
-            const refreshToken  = params.get('refresh_token');
-            const tenantId      = params.get('tenant_id');
-            const subdomain     = params.get('subdomain');
+            const params       = new URLSearchParams(window.location.search);
+            const sessionToken = params.get('session_token');
+            const refreshToken = params.get('refresh_token');
+            const tenantId     = params.get('tenant_id');
+            const subdomain    = params.get('subdomain');
+            const error        = params.get('error');
 
-            if (!sessionToken || !refreshToken) {
-                showError('No session tokens received. Please request a new magic link.');
+            // dodman-core can also redirect here with an error param
+            if (error) {
+                showError(friendlyError(decodeURIComponent(error)));
                 return;
             }
 
-            // Store tokens in sessionStorage
+            if (!sessionToken) {
+                showError('No session token received. Please request a new magic link.');
+                return;
+            }
+
             sessionStorage.setItem(SESSION_KEY, sessionToken);
-            sessionStorage.setItem(REFRESH_KEY, refreshToken);
-            if (tenantId)   sessionStorage.setItem(TENANT_KEY, tenantId);
-            if (subdomain)  sessionStorage.setItem('dodman_subdomain', subdomain);
+            if (refreshToken) sessionStorage.setItem(REFRESH_KEY, refreshToken);
+            if (tenantId)     sessionStorage.setItem(TENANT_KEY, tenantId);
+            if (subdomain)    sessionStorage.setItem('dodman_subdomain', subdomain);
 
-            // Decode token to get user info for welcome message
-            let userName = 'there';
-            try {
-                const base64  = sessionToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-                const payload = JSON.parse(atob(base64));
-                userName = payload.email ? payload.email.split('@')[0] : 'there';
-            } catch (e) { /* ignore decode errors */ }
-
-            // Strip tokens from URL so they don't appear in browser history
             window.history.replaceState({}, document.title, '/auth/callback');
-
-            // Show success and redirect
-            showSuccess({ user: { name: userName } });
+            showSuccess();
         }
 
-        // Show success and redirect to dashboard home
-        function showSuccess(data) {
-            document.getElementById('spinner').style.display = 'none';
-            document.getElementById('title').textContent = '✓ Login Successful!';
-            document.getElementById('statusText').textContent =
-                `Welcome back, ${data.user.name || 'there'}!`;
+        function showSuccess() {
+            // Decode token for welcome name
+            let userName = 'there';
+            try {
+                const token   = sessionStorage.getItem(SESSION_KEY);
+                const base64  = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                const payload = JSON.parse(atob(base64));
+                const prefix  = (payload.email || '').split('@')[0];
+                userName = prefix
+                    .replace(/[._-]/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase())
+                    || 'there';
+            } catch { /* ignore */ }
+
+            document.getElementById('spinner').style.display  = 'none';
+            document.getElementById('title').textContent      = '✓ Login Successful!';
+            document.getElementById('statusText').textContent = `Welcome back, ${userName}!`;
 
             const successMsg = document.getElementById('successMessage');
             successMsg.textContent = 'Your session has been created. Redirecting to dashboard...';
@@ -218,7 +291,6 @@
 
             let countdown = 3;
             const countdownEl = document.getElementById('countdown');
-
             const timer = setInterval(() => {
                 countdown--;
                 countdownEl.textContent = countdown;
@@ -229,21 +301,36 @@
             }, 1000);
         }
 
-        // Show error state
         function showError(message) {
-            document.getElementById('spinner').style.display = 'none';
-            document.getElementById('title').textContent = 'Verification Failed';
-            document.getElementById('statusText').style.display = 'none';
+            document.getElementById('spinner').style.display      = 'none';
+            document.getElementById('title').textContent          = 'Verification Failed';
+            document.getElementById('statusText').style.display   = 'none';
 
             const errorMsg = document.getElementById('errorMessage');
             errorMsg.textContent = message;
             errorMsg.classList.add('show');
 
-            document.getElementById('actions').style.display = 'block';
+            // Show a "Request new link" button that goes back to login
+            const actions = document.getElementById('actions');
+            actions.innerHTML = `
+                <a href="${LOGIN_URL}" class="btn">Request New Link</a>
+            `;
+            actions.style.display = 'block';
         }
 
-        // Run on page load
-        handleCallback();
+        // ── Router: decide which flow based on URL ────────────────────────────────
+        (function init() {
+            const params = new URLSearchParams(window.location.search);
+            const token  = params.get('token');
+
+            if (token) {
+                // Magic link click — verify it ourselves
+                handleMagicLink(token);
+            } else {
+                // Post-verification callback from dodman-core
+                handleCallback();
+            }
+        })();
     </script>
 </body>
 </html>
