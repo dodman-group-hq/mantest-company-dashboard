@@ -482,6 +482,81 @@
             }
 
         });
+
+        // ── Inactivity Logout ─────────────────────────────────────────────────────
+        // Logs the user out after 30 minutes of no mouse, keyboard, or touch activity.
+        (function () {
+            const TIMEOUT_MS    = 30 * 60 * 1000; // 30 minutes
+            const WARNING_MS    = 2  * 60 * 1000; // warn 2 minutes before logout
+            let logoutTimer;
+            let warningTimer;
+            let warningShown = false;
+
+            const warningEl = document.createElement('div');
+            warningEl.id = 'inactivity-warning';
+            warningEl.style.cssText = `
+                display: none;
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 9999;
+                background: var(--warning-light, #fff8e1);
+                border: 1px solid var(--warning, #f59e0b);
+                color: var(--warning, #f59e0b);
+                padding: 14px 20px;
+                border-radius: 10px;
+                font-size: 0.875rem;
+                font-family: Inter, sans-serif;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                max-width: 280px;
+            `;
+            warningEl.innerHTML = `
+                <strong>⚠️ Still there?</strong>
+                <p style="margin: 4px 0 10px; color: var(--text-secondary, #6b7280); font-size:0.8rem;">
+                    You'll be logged out in 2 minutes due to inactivity.
+                </p>
+                <button onclick="INACTIVITY.reset()"
+                        style="width:100%; padding: 6px 12px; background: var(--accent); 
+                            color: white; border: none; border-radius: 6px; 
+                            cursor: pointer; font-size: 0.8rem;">
+                    Stay Logged In
+                </button>
+            `;
+            document.body.appendChild(warningEl);
+
+            function showWarning() {
+                warningShown = true;
+                warningEl.style.display = 'block';
+            }
+
+            function hideWarning() {
+                warningShown = false;
+                warningEl.style.display = 'none';
+            }
+
+            function reset() {
+                clearTimeout(logoutTimer);
+                clearTimeout(warningTimer);
+                hideWarning();
+
+                warningTimer = setTimeout(showWarning, TIMEOUT_MS - WARNING_MS);
+                logoutTimer  = setTimeout(() => {
+                    hideWarning();
+                    AUTH.logout();
+                }, TIMEOUT_MS);
+            }
+
+            // Listen for any user activity
+            ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+                window.addEventListener(evt, reset, { passive: true });
+            });
+
+            // Start the timer
+            reset();
+
+            // Expose reset so the "Stay Logged In" button can call it
+            window.INACTIVITY = { reset };
+        })();
     </script>
     
 </body>
