@@ -416,7 +416,7 @@ async def get_icp_data(authorization: Optional[str] = Header(None)):
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/icp",
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/icp",
                 headers={"Authorization": authorization},
                 timeout=10.0
             )
@@ -432,6 +432,32 @@ async def get_icp_data(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=500, detail="Failed to fetch ICP data")
 
 
+@app.post("/api/settings/icp/data")
+async def save_icp_data(request: Request, authorization: Optional[str] = Header(None)):
+    """Save the tenant's ICP profile."""
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/icp",
+                headers={"Authorization": authorization, "Content-Type": "application/json"},
+                content=body,
+                timeout=10.0
+            )
+        if resp.status_code not in (200, 201):
+            raise HTTPException(status_code=resp.status_code, detail="Failed to save ICP data")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving ICP data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save ICP data")
+
+
 @app.get("/api/settings/api/data")
 async def get_api_settings_data(authorization: Optional[str] = Header(None)):
     """Return the tenant's API keys/settings as JSON."""
@@ -442,7 +468,7 @@ async def get_api_settings_data(authorization: Optional[str] = Header(None)):
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/api-keys",
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/api-keys",
                 headers={"Authorization": authorization},
                 timeout=10.0
             )
