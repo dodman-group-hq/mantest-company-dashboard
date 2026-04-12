@@ -267,18 +267,87 @@
             this.loadAPIKeys();
             this.loadWebhooks();
         },
-        
+
         async loadAPIKeys() {
             try {
+                // Uses the dedicated JSON endpoint, not the HTML fragment endpoint
                 const result = await window.Sovereign.apiRequest(
-                    '/api/settings/api/keys',
+                    '/api/settings/api/data',
                     'GET'
                 );
-                
-                this.displayKeys(result.keys);
+                if (result && result.api_keys) {
+                    this.displayKeys(result.api_keys);
+                }
             } catch (error) {
                 console.error('Failed to load API keys:', error);
+                // Static HTML fallback already rendered — no action needed
             }
+        },
+
+        displayKeys(keys) {
+            // If the server returns real keys, replace the static list.
+            // If empty, leave the static placeholder cards in place.
+            if (!keys || keys.length === 0) return;
+
+            const list = document.getElementById('api-keys-list');
+            if (!list) return;
+
+            list.innerHTML = keys.map(key => `
+                <div class="border border-[var(--border-color)] rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[var(--success-light)] flex items-center justify-center">
+                                <svg class="w-5 h-5 text-[var(--success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-[var(--text-main)]">${key.name || 'API Key'}</h3>
+                                <p class="text-xs text-[var(--text-muted)]">
+                                    Created ${key.created_at ? new Date(key.created_at).toLocaleDateString() : '—'}
+                                    ${key.last_used ? '• Last used ' + new Date(key.last_used).toLocaleDateString() : ''}
+                                </p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium ${key.active ? 'bg-[var(--success-light)] text-[var(--success)]' : 'bg-[var(--bg-side)] text-[var(--text-muted)]'} rounded">
+                            ${key.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-3">
+                        <input type="password"
+                               value="${key.key || key.prefix + '••••••••'}"
+                               readonly
+                               id="key-${key.id}"
+                               class="flex-1 px-3 py-2 bg-[var(--bg-side)] border border-[var(--border-color)] rounded text-sm font-mono">
+                        <button onclick="APISettings.toggleKeyVisibility('key-${key.id}')"
+                                class="px-3 py-2 border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                        <button onclick="APISettings.copyKey('key-${key.id}')"
+                                class="px-3 py-2 border border-[var(--border-color)] rounded hover:bg-[var(--bg-hover)] transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs text-[var(--text-muted)]">
+                            <span class="font-medium">Permissions:</span> ${key.permissions || 'Read & Write'}
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="APISettings.revokeKey('${key.id}')"
+                                    class="text-xs text-[var(--error)] hover:underline">
+                                Revoke
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         },
         
         loadWebhooks() {
@@ -301,50 +370,48 @@
         },
         
         async createNewKey() {
-            try {
-                const result = await window.Sovereign.apiRequest(
-                    '/api/settings/api/keys',
-                    'POST',
-                    { name: 'New Key', permissions: 'read_write' }
-                );
-
-                const modalContent = `
+            const modalContent = `
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Key Name</label>
-                        <input type="text" placeholder="e.g., Production API" class="w-full px-3 py-2 border rounded">
+                        <input type="text" id="new-key-name" placeholder="e.g., Production API" class="w-full px-3 py-2 border rounded">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-2">Permissions</label>
-                        <select class="w-full px-3 py-2 border rounded">
-                            <option>Read & Write</option>
-                            <option>Read Only</option>
-                            <option>Write Only</option>
+                        <select id="new-key-permissions" class="w-full px-3 py-2 border rounded">
+                            <option value="read_write">Read & Write</option>
+                            <option value="read_only">Read Only</option>
+                            <option value="write_only">Write Only</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Environment</label>
-                        <select class="w-full px-3 py-2 border rounded">
-                            <option>Production</option>
-                            <option>Development</option>
-                            <option>Staging</option>
-                        </select>
-                    </div>
-                    <button onclick="window.Sovereign.closeModal(); window.Sovereign.showNotification('API key created', 'success')" 
+                    <button onclick="APISettings.confirmCreateKey()"
                             class="w-full px-4 py-2 bg-[var(--accent)] text-white rounded">
                         Create API Key
                     </button>
                 </div>
             `;
-            
-                window.Sovereign.showModal('Create New API Key', modalContent);
-                
+            window.Sovereign.showModal('Create New API Key', modalContent);
+        },
+
+        async confirmCreateKey() {
+            const name = document.getElementById('new-key-name')?.value?.trim();
+            const permissions = document.getElementById('new-key-permissions')?.value;
+            if (!name) {
+                window.Sovereign.showNotification('Please enter a key name', 'error');
+                return;
+            }
+            try {
+                await window.Sovereign.apiRequest(
+                    '/api/settings/api/keys',
+                    'POST',
+                    { name, permissions }
+                );
+                window.Sovereign.closeModal();
                 window.Sovereign.showNotification('API key created!', 'success');
-                await this.loadKeys();
+                await this.loadAPIKeys();
             } catch (error) {
                 window.Sovereign.showNotification('Failed to create key', 'error');
             }
-            
         },
         
         editKey(keyType) {
@@ -361,7 +428,7 @@
                 );
                 
                 window.Sovereign.showNotification('API key revoked', 'success');
-                await this.loadKeys();
+                await this.loadAPIKeys();
             } catch (error) {
                 window.Sovereign.showNotification('Failed to revoke key', 'error');
             }
