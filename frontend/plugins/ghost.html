@@ -267,7 +267,6 @@
     <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
         <h3 class="font-semibold text-[var(--text-main)] mb-1 text-lg">🚀 Send Campaign</h3>
         <p class="text-sm text-[var(--text-muted)] mb-4">This will send the current draft via the Core API email service.</p>
-
         <div class="space-y-3">
             <div>
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Recipient Email <span class="text-[var(--error)]">*</span></label>
@@ -275,9 +274,10 @@
                        class="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
             </div>
             <div>
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">From Email <span class="text-[var(--error)]">*</span></label>
-                <input type="email" id="send-from-email" placeholder="you@yourdomain.com"
+                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Reply-To Email <span class="text-[var(--error)]">*</span></label>
+                <input type="email" id="send-reply-to" placeholder="you@yourdomain.com"
                        class="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                <p class="text-xs text-[var(--text-muted)] mt-1">Shown to recipients — they can reply directly to this address.</p>
             </div>
             <div>
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Subject <span class="text-[var(--error)]">*</span></label>
@@ -285,7 +285,6 @@
                        class="w-full px-3 py-2 border border-[var(--border-color)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
             </div>
         </div>
-
         <p id="send-modal-error" class="hidden text-xs text-[var(--error)] mt-2"></p>
         <div class="flex gap-3 justify-end mt-4">
             <button onclick="GhostPlugin.closeSendModal()"
@@ -839,7 +838,7 @@
             const errorEl = document.getElementById('send-modal-error');
             if (errorEl) errorEl.classList.add('hidden');
             document.getElementById('send-recipient').value = '';
-            document.getElementById('send-from-email').value = '';
+            document.getElementById('send-reply-to').value = '';
             document.getElementById('send-subject').value = '';
             document.getElementById('send-modal').classList.remove('hidden');
             setTimeout(() => document.getElementById('send-recipient')?.focus(), 50);
@@ -850,18 +849,17 @@
         },
 
         async confirmSend() {
-            const recipient  = document.getElementById('send-recipient')?.value?.trim();
-            const fromEmail  = document.getElementById('send-from-email')?.value?.trim();
-            const subject    = document.getElementById('send-subject')?.value?.trim();
-            const errorEl    = document.getElementById('send-modal-error');
+            const recipient = document.getElementById('send-recipient')?.value?.trim();
+            const replyTo   = document.getElementById('send-reply-to')?.value?.trim();
+            const subject   = document.getElementById('send-subject')?.value?.trim();
+            const errorEl   = document.getElementById('send-modal-error');
 
-            // Validate all three fields
             if (!recipient || !recipient.includes('@')) {
                 if (errorEl) { errorEl.textContent = 'Please enter a valid recipient email.'; errorEl.classList.remove('hidden'); }
                 return;
             }
-            if (!fromEmail || !fromEmail.includes('@')) {
-                if (errorEl) { errorEl.textContent = 'Please enter a valid from email.'; errorEl.classList.remove('hidden'); }
+            if (!replyTo || !replyTo.includes('@')) {
+                if (errorEl) { errorEl.textContent = 'Please enter a valid reply-to email.'; errorEl.classList.remove('hidden'); }
                 return;
             }
             if (!subject) {
@@ -879,20 +877,22 @@
                     `/api/tenants/${window.Sovereign.getTenantId()}/plugins/ghost/send`,
                     'POST',
                     {
-                        draft_id:   this.currentDraftMeta?.draft_id || null,
+                        draft_id:  this.currentDraftMeta?.draft_id || null,
                         recipients: [recipient],
-                        from_email: fromEmail,
-                        subject:    subject,
-                        send_via:   'email'
+                        reply_to:  replyTo,
+                        subject:   subject,
+                        send_via:  'email'
                     }
                 );
 
-                // ── Full success ──────────────────────────────────────────────────
+                // ── Handle full success ───────────────────────────────────────────
                 if (result.status === 'success' && (!result.failed || result.failed.length === 0)) {
                     this.closeSendModal();
-                    window.Sovereign.showNotification(`Campaign sent to ${recipient}!`, 'success');
+                    window.Sovereign.showNotification(
+                        `Campaign sent to ${recipient}!`, 'success'
+                    );
 
-                // ── Partial failure ───────────────────────────────────────────────
+                // ── Handle partial failure (some sent, some failed) ───────────────
                 } else if (result.status === 'success' && result.failed?.length > 0) {
                     this.closeSendModal();
                     window.Sovereign.showNotification(
@@ -900,18 +900,21 @@
                         'warning'
                     );
 
-                // ── Complete failure ──────────────────────────────────────────────
+                // ── Handle complete failure ───────────────────────────────────────
                 } else {
                     throw new Error(
-                        result.failed?.length
-                            ? `Failed to send to: ${result.failed.join(', ')}`
+                        result.failed?.length 
+                            ? `Failed to send to: ${result.failed.join(', ')}` 
                             : result.message || 'Send failed'
                     );
                 }
 
             } catch (error) {
                 console.error('Send error:', error);
-                if (errorEl) { errorEl.textContent = error.message || 'Failed to send. Please try again.'; errorEl.classList.remove('hidden'); }
+                if (errorEl) { 
+                    errorEl.textContent = error.message || 'Failed to send. Please try again.'; 
+                    errorEl.classList.remove('hidden'); 
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Send';
