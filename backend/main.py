@@ -399,6 +399,66 @@ async def get_dashboard_overview(request: Request, authorization: Optional[str] 
 
 
 # ============================================================================
+# SETTINGS DATA ENDPOINTS (JSON) — separate from the HTML fragment endpoints
+# ============================================================================
+# The HTML fragment endpoints (in routes/settings.py) serve the page shell
+# for HTMX. These endpoints serve the *data* as JSON so plugin scripts can
+# call apiRequest('/api/settings/icp/data') and get back structured data
+# rather than HTML, which would cause "Non-JSON response" errors in global.js.
+
+@app.get("/api/settings/icp/data")
+async def get_icp_data(authorization: Optional[str] = Header(None)):
+    """Return the tenant's saved ICP profile as JSON."""
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/icp",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+        if resp.status_code == 404:
+            return {"icp": {}}
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch ICP data")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching ICP data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch ICP data")
+
+
+@app.get("/api/settings/api/data")
+async def get_api_settings_data(authorization: Optional[str] = Header(None)):
+    """Return the tenant's API keys/settings as JSON."""
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{DODMAN_CORE_API_URL}/api/tenants/{tenant_id}/api-keys",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+        if resp.status_code == 404:
+            return {"api_keys": []}
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch API settings")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching API settings: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch API settings")
+
+
+# ============================================================================
 # API PROXY TO DODMAN-CORE
 # ============================================================================
 
