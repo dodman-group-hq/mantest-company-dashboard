@@ -22,7 +22,7 @@ from typing import Optional
 import logging
 
 # Import route modules
-from routes import auth, plugins, plugin_dashboards, settings
+from .routes import auth, plugins, plugin_dashboards, settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -483,6 +483,103 @@ async def get_api_settings_data(authorization: Optional[str] = Header(None)):
         logger.error(f"Error fetching API settings: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch API settings")
 
+@app.post("/api/settings/api/keys")
+async def create_api_key(request: Request, authorization: Optional[str] = Header(None)):
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/api-keys",
+                headers={"Authorization": authorization, "Content-Type": "application/json"},
+                content=body,
+                timeout=10.0
+            )
+        if resp.status_code not in (200, 201):
+            raise HTTPException(status_code=resp.status_code, detail="Failed to create API key")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating API key: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create API key")
+
+
+@app.delete("/api/settings/api/keys/{key_id}")
+async def revoke_api_key(key_id: str, authorization: Optional[str] = Header(None)):
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.delete(
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/api-keys/{key_id}",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+        if resp.status_code == 404:
+            raise HTTPException(status_code=404, detail="API key not found")
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to revoke API key")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error revoking API key: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to revoke API key")
+
+@app.get("/api/settings/profile/data")
+async def get_profile_data(authorization: Optional[str] = Header(None)):
+    """Return the tenant's profile as JSON."""
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/profile",
+                headers={"Authorization": authorization},
+                timeout=10.0
+            )
+        if resp.status_code == 404:
+            return {"profile": {}}
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail="Failed to fetch profile")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching profile: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch profile")
+
+
+@app.put("/api/settings/profile/data")
+async def update_profile_data(request: Request, authorization: Optional[str] = Header(None)):
+    """Update the tenant's profile."""
+    tenant_id = _extract_tenant_id(authorization)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    try:
+        body = await request.body()
+        async with httpx.AsyncClient() as client:
+            resp = await client.put(
+                f"{DODMAN_CORE_API_URL}/api/tenant-settings/tenants/{tenant_id}/profile",
+                headers={"Authorization": authorization, "Content-Type": "application/json"},
+                content=body,
+                timeout=10.0
+            )
+        if resp.status_code not in (200, 201):
+            raise HTTPException(status_code=resp.status_code, detail="Failed to update profile")
+        return resp.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update profile")
 
 # ============================================================================
 # API PROXY TO DODMAN-CORE
