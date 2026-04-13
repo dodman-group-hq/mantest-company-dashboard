@@ -1,0 +1,397 @@
+<!-- 
+    Profile Settings
+    This HTML is returned by: GET /api/settings/profile (or /profile)
+    Rendered into: #main-content via HTMX
+-->
+
+<div class="fade-in">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-[var(--text-main)]">Profile</h1>
+        <p class="text-[var(--text-secondary)] mt-2">
+            Manage your account details and preferences
+        </p>
+    </div>
+
+    <!-- Save Status -->
+    <div id="profile-save-status" class="hidden mb-4 px-4 py-3 rounded-lg">
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span class="font-medium" id="profile-save-message">Profile updated successfully</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: Avatar + Quick Info -->
+        <div class="lg:col-span-1 space-y-6">
+
+            <!-- Avatar Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6 text-center">
+                <div id="profile-avatar"
+                     class="w-20 h-20 rounded-full bg-[var(--accent)] flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+                    ··
+                </div>
+                <h2 id="profile-display-name" class="text-lg font-semibold text-[var(--text-main)]">Loading...</h2>
+                <p id="profile-display-email" class="text-sm text-[var(--text-secondary)] mt-1">—</p>
+                <span id="profile-display-tier"
+                      class="inline-block mt-3 px-3 py-1 text-xs font-medium bg-[var(--accent-light)] text-[var(--accent)] rounded-full">
+                    —
+                </span>
+            </div>
+
+            <!-- Account Info Card -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                <h3 class="font-semibold text-[var(--text-main)] mb-4">Account Info</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-[var(--text-muted)]">Status</span>
+                        <span id="profile-status" class="font-medium text-[var(--success)]">Active</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[var(--text-muted)]">Subdomain</span>
+                        <span id="profile-subdomain" class="font-medium text-[var(--text-main)] font-mono text-xs">—</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[var(--text-muted)]">Member since</span>
+                        <span id="profile-since" class="font-medium text-[var(--text-main)]">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--error)] border-opacity-30 p-6">
+                <h3 class="font-semibold text-[var(--error)] mb-2">Danger Zone</h3>
+                <p class="text-xs text-[var(--text-muted)] mb-4">
+                    These actions are irreversible. Please be certain.
+                </p>
+                <button onclick="ProfileSettings.confirmLogoutAll()"
+                        class="w-full px-4 py-2 text-sm border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors mb-2">
+                    Sign Out All Devices
+                </button>
+                <button onclick="ProfileSettings.confirmDeactivate()"
+                        class="w-full px-4 py-2 text-sm border border-[var(--error)] text-[var(--error)] rounded-lg hover:bg-red-50 transition-colors">
+                    Deactivate Account
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Edit Forms -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Personal Details -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Personal Details</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                            Full Name
+                        </label>
+                        <input type="text"
+                               id="profile-name"
+                               placeholder="Your name"
+                               class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-main)] mb-2">
+                            Email Address
+                        </label>
+                        <input type="email"
+                               id="profile-email"
+                               placeholder="you@example.com"
+                               class="w-full px-4 py-2 border border-[var(--border-color)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                        <p class="text-xs text-[var(--text-muted)] mt-1">
+                            Changing your email will require re-verification on next login.
+                        </p>
+                    </div>
+                    <div class="flex justify-end">
+                        <button onclick="ProfileSettings.saveDetails()"
+                                id="save-details-btn"
+                                class="px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password / Magic Link -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                <h2 class="text-xl font-semibold text-[var(--text-main)] mb-1">Login & Security</h2>
+                <p class="text-sm text-[var(--text-secondary)] mb-4">
+                    Dodman AI uses magic links — no password required. Request a new login link anytime.
+                </p>
+                <button onclick="ProfileSettings.requestMagicLink()"
+                        id="magic-link-btn"
+                        class="px-6 py-2 border border-[var(--accent)] text-[var(--accent)] rounded-lg hover:bg-[var(--accent-light)] transition-colors">
+                    Send Magic Login Link
+                </button>
+            </div>
+
+            <!-- Notification Preferences -->
+            <div class="bg-white rounded-lg shadow-sm border border-[var(--border-color)] p-6">
+                <h2 class="text-xl font-semibold text-[var(--text-main)] mb-4">Notification Preferences</h2>
+                <div class="space-y-4">
+                    <label class="flex items-start p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors">
+                        <input type="checkbox" id="notif-leads" class="mt-0.5 mr-3 rounded border-[var(--border-color)]" checked>
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Lead Alerts</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-0.5">Notify when Lead Sniper finds high-score leads</div>
+                        </div>
+                    </label>
+                    <label class="flex items-start p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors">
+                        <input type="checkbox" id="notif-competitor" class="mt-0.5 mr-3 rounded border-[var(--border-color)]" checked>
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Competitor Alerts</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-0.5">Notify when Shadow detects competitor vulnerabilities</div>
+                        </div>
+                    </label>
+                    <label class="flex items-start p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors">
+                        <input type="checkbox" id="notif-campaigns" class="mt-0.5 mr-3 rounded border-[var(--border-color)]">
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">Campaign Reports</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-0.5">Weekly summary of Ghost Writer campaign performance</div>
+                        </div>
+                    </label>
+                    <label class="flex items-start p-3 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-hover)] cursor-pointer transition-colors">
+                        <input type="checkbox" id="notif-system" class="mt-0.5 mr-3 rounded border-[var(--border-color)]" checked>
+                        <div class="flex-1">
+                            <div class="font-medium text-sm">System Notifications</div>
+                            <div class="text-xs text-[var(--text-muted)] mt-0.5">Billing, maintenance, and account security alerts</div>
+                        </div>
+                    </label>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="ProfileSettings.saveNotifications()"
+                                class="px-6 py-2 bg-[var(--accent)] text-white rounded-lg hover:opacity-90 transition-opacity">
+                            Save Preferences
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Plugin JavaScript -->
+<script>
+(function () {
+    const ProfileSettings = {
+
+        tenantId: null,
+        profileData: null,
+
+        init() {
+            this.tenantId = window.Sovereign.getTenantId();
+            this.loadProfile();
+        },
+
+        // ====================================================================
+        // LOAD
+        // ====================================================================
+
+        async loadProfile() {
+            try {
+                const result = await window.Sovereign.apiRequest(
+                   '/api/settings/profile/data',
+                    'GET'
+                );
+
+                if (result && result.profile) {
+                    this.profileData = result.profile;
+                    this.populateUI(result.profile);
+                }
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+                // Fall back to JWT payload for basic display
+                this.populateFromToken();
+            }
+        },
+
+        populateUI(profile) {
+            // Avatar initials
+            const name    = profile.contact_name || '';
+            const parts   = name.trim().split(/\s+/);
+            const initials = parts.length >= 2
+                ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                : name.slice(0, 2).toUpperCase() || '??';
+
+            document.getElementById('profile-avatar').textContent        = initials;
+            document.getElementById('profile-display-name').textContent  = name || '—';
+            document.getElementById('profile-display-email').textContent = profile.contact_email || '—';
+            document.getElementById('profile-display-tier').textContent  = profile.subscription_tier || 'Basic';
+            document.getElementById('profile-subdomain').textContent     = profile.subdomain || '—';
+            document.getElementById('profile-status').textContent        = profile.is_active ? 'Active' : 'Inactive';
+            document.getElementById('profile-status').className          = profile.is_active
+                ? 'font-medium text-[var(--success)]'
+                : 'font-medium text-[var(--error)]';
+
+            if (profile.member_since) {
+                document.getElementById('profile-since').textContent =
+                    new Date(profile.member_since).toLocaleDateString([], { year: 'numeric', month: 'long' });
+            }
+
+            // Pre-fill edit fields
+            document.getElementById('profile-name').value  = name;
+            document.getElementById('profile-email').value = profile.contact_email || '';
+        },
+
+        populateFromToken() {
+            // Graceful fallback — read what auth.js already decoded
+            try {
+                const token   = sessionStorage.getItem('dodman_session_token');
+                const b64     = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                const payload = JSON.parse(atob(b64));
+                const email   = payload.email || '';
+                const prefix  = email.split('@')[0]
+                    .replace(/[._-]/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+
+                document.getElementById('profile-display-name').textContent  = payload.tenant_name || prefix;
+                document.getElementById('profile-display-email').textContent = email;
+                document.getElementById('profile-avatar').textContent        = prefix.slice(0, 2).toUpperCase();
+                document.getElementById('profile-name').value                = payload.tenant_name || prefix;
+                document.getElementById('profile-email').value               = email;
+            } catch { /* ignore */ }
+        },
+
+        // ====================================================================
+        // SAVE DETAILS
+        // ====================================================================
+
+        async saveDetails() {
+            const name  = document.getElementById('profile-name').value.trim();
+            const email = document.getElementById('profile-email').value.trim();
+
+            if (!name && !email) {
+                window.Sovereign.showNotification('Nothing to save', 'info');
+                return;
+            }
+
+            const btn = document.getElementById('save-details-btn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            try {
+                await window.Sovereign.apiRequest(
+                    '/api/settings/profile/data',
+                    'PUT',
+                    { contact_name: name || undefined, contact_email: email || undefined }
+                );
+
+                // Refresh the avatar/display name immediately
+                if (this.profileData) {
+                    this.profileData.contact_name  = name  || this.profileData.contact_name;
+                    this.profileData.contact_email = email || this.profileData.contact_email;
+                    this.populateUI(this.profileData);
+                }
+
+                this.showStatus('Profile updated successfully', true);
+                window.Sovereign.showNotification('Profile updated', 'success');
+            } catch (error) {
+                console.error('Failed to save profile:', error);
+                this.showStatus('Failed to save — please try again', false);
+                window.Sovereign.showNotification('Failed to update profile', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        },
+
+        // ====================================================================
+        // NOTIFICATIONS
+        // ====================================================================
+
+        async saveNotifications() {
+            const prefs = {
+                lead_alerts:      document.getElementById('notif-leads').checked,
+                competitor_alerts: document.getElementById('notif-competitor').checked,
+                campaign_reports: document.getElementById('notif-campaigns').checked,
+                system_notifications: document.getElementById('notif-system').checked,
+            };
+
+            // Persist locally — wire to API when notification prefs endpoint exists
+            window.Sovereign.saveToLocalStorage('notification_prefs', prefs);
+            window.Sovereign.showNotification('Notification preferences saved', 'success');
+        },
+
+        loadNotificationPrefs() {
+            const prefs = window.Sovereign.getFromLocalStorage('notification_prefs');
+            if (!prefs) return;
+            if (prefs.lead_alerts      !== undefined) document.getElementById('notif-leads').checked        = prefs.lead_alerts;
+            if (prefs.competitor_alerts !== undefined) document.getElementById('notif-competitor').checked  = prefs.competitor_alerts;
+            if (prefs.campaign_reports !== undefined) document.getElementById('notif-campaigns').checked    = prefs.campaign_reports;
+            if (prefs.system_notifications !== undefined) document.getElementById('notif-system').checked  = prefs.system_notifications;
+        },
+
+        // ====================================================================
+        // MAGIC LINK
+        // ====================================================================
+
+        async requestMagicLink() {
+            const email = this.profileData?.contact_email
+                || document.getElementById('profile-email').value.trim();
+
+            if (!email) {
+                window.Sovereign.showNotification('No email address found', 'error');
+                return;
+            }
+
+            const btn  = document.getElementById('magic-link-btn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                await window.Sovereign.apiRequest(
+                    '/api/auth/request-magic-link',
+                    'POST',
+                    { email, tenant_id: this.tenantId }
+                );
+                window.Sovereign.showNotification(`Magic link sent to ${email}`, 'success');
+            } catch (error) {
+                window.Sovereign.showNotification('Failed to send magic link', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        },
+
+        // ====================================================================
+        // DANGER ZONE
+        // ====================================================================
+
+        confirmLogoutAll() {
+            if (!confirm('Sign out from all devices? You will need a new magic link to log back in.')) return;
+            AUTH.logout();
+        },
+
+        confirmDeactivate() {
+            if (!confirm('Deactivate your account? This will suspend all plugins and cannot be undone without contacting support.')) return;
+            window.Sovereign.showNotification('Please contact support@dodman.group to deactivate your account', 'info');
+        },
+
+        // ====================================================================
+        // STATUS BANNER
+        // ====================================================================
+
+        showStatus(message, success) {
+            const el  = document.getElementById('profile-save-status');
+            const msg = document.getElementById('profile-save-message');
+            msg.textContent = message;
+            el.className = `mb-4 px-4 py-3 rounded-lg flex items-center ${
+                success
+                    ? 'bg-[var(--success-light)] text-[var(--success)]'
+                    : 'bg-red-50 text-[var(--error)]'
+            }`;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        },
+    };
+
+    ProfileSettings.init();
+    window.ProfileSettings = ProfileSettings;
+})();
+</script>
